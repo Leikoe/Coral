@@ -10,6 +10,7 @@ const IS_CLOSE_EPSILON: f32 = 0.01;
 pub struct Robot {
     id: RobotId,
     pos: Arc<Mutex<Vec2f32>>,
+    is_dribbling: Arc<Mutex<bool>>,
     pub next_command: Arc<Mutex<Option<RobotCommand>>>,
 }
 
@@ -18,12 +19,27 @@ impl Robot {
         Self {
             id,
             pos: Arc::new(Mutex::new(pos)),
+            is_dribbling: Arc::new(Mutex::new(false)),
             next_command: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn get_id(&self) -> RobotId {
         self.id
+    }
+
+    pub fn enable_dribbler(&self) {
+        let mut is_dribbling = self.is_dribbling.lock().unwrap();
+        *is_dribbling = true;
+    }
+
+    pub fn disable_dribbler(&self) {
+        let mut is_dribbling = self.is_dribbling.lock().unwrap();
+        *is_dribbling = false;
+    }
+
+    pub fn is_dribbling(&self) -> bool {
+        self.is_dribbling.lock().unwrap().clone()
     }
 
     pub fn get_pos(&self) -> Vec2f32 {
@@ -47,6 +63,7 @@ impl Robot {
                 next_command.replace(RobotCommand {
                     vel: Vec2f32::new(to_pos.x / 10., to_pos.y / 10.),
                     kick: false,
+                    dribble: self.is_dribbling(),
                 });
             }
             interval.tick().await;

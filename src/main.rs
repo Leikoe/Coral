@@ -15,6 +15,7 @@ const CONTROL_PERIOD: Duration = Duration::from_millis(50);
 #[derive(Debug)]
 pub struct RobotCommand {
     vel: Vec2f32,
+    dribble: bool,
     kick: bool,
 }
 
@@ -39,11 +40,17 @@ fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
         loop {
             interval.tick().await; // first tick ticks immediately that's why it's at the beginning
 
+            println!("[DEBUG] robots state");
             for r in team.values() {
-                println!("id: {} | pos: {:?}", r.get_id(), r.get_pos());
+                println!(
+                    "\tid: {} | is_dribbling: {} | pos: {:?}",
+                    r.get_id(),
+                    r.is_dribbling(),
+                    r.get_pos(),
+                );
             }
 
-            println!("[DEBUG] sending commands!");
+            println!("[DEBUG] sending commands!\n");
             // take the commands & apply them (simulate real robot)
             take_next_commands(&mut team)
                 .drain()
@@ -76,6 +83,7 @@ async fn main() {
         ),
     )
     .await;
+    go_get_ball(team.get(&0).unwrap(), Vec2f32::new(1., 1.)).await;
 
     control_loop_thread.abort();
 }
