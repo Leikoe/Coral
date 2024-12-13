@@ -17,30 +17,35 @@ async fn once<C: Fn() -> bool, F: IntoFuture>(cond: C, f: F, check_interval_peri
 }
 
 pub async fn do_square(robot: &Robot) {
-    robot.goto(&Point2::new(0., 1.)).await;
-    robot.goto(&Point2::new(1., 1.)).await;
-    robot.goto(&Point2::new(1., 0.)).await;
-    robot.goto(&Point2::new(0., 0.)).await;
+    robot.goto(&Point2::new(0., 1.), None).await;
+    robot.goto(&Point2::new(1., 1.), None).await;
+    robot.goto(&Point2::new(1., 0.), None).await;
+    robot.goto(&Point2::new(0., 0.), None).await;
     println!("reached dest!");
 }
 
 pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {
     join!(
-        left_winger.goto(&Point2::new(0.5, 0.5)),
-        right_winger.goto(&Point2::new(0.5, -0.5)),
-        fronter.goto(&Point2::new(0.5, 0.)),
+        left_winger.goto(&Point2::new(0.5, 0.5), None),
+        right_winger.goto(&Point2::new(0.5, -0.5), None),
+        fronter.goto(&Point2::new(0.5, 0.), None),
     )
     .await;
 }
 
 pub async fn go_get_ball(robot: &Robot, ball: &Ball) {
     robot.enable_dribbler();
-    robot.goto(ball).await; // this will follow the ball even if it moves
+    robot.goto(ball, None).await; // this will follow the ball even if it moves
     println!("got ball!");
 }
 
+pub async fn attak(robot: &Robot, ball: &Ball) {
+    robot.goto(ball, None).await;
+    // robot.kick();
+}
+
 pub async fn intercept(robot: &Robot, ball: &Ball) {
-    let _orientation = (ball.get_pos() - robot.get_pos()).angle();
+    let orientation = robot.get_pos().to(ball.get_pos()).angle();
     // if ball.get_vel().norm() < 0.4 {
     //     robot.goto(&ball.get_pos()).await;
     //     return;
@@ -59,7 +64,7 @@ pub async fn intercept(robot: &Robot, ball: &Ball) {
             },
             CONTROL_PERIOD
         ),
-        robot.goto(&target) // TODO: use orientation
+        robot.goto(&target, Some(orientation)) // TODO: use orientation
     )
     .await;
     robot.disable_dribbler();

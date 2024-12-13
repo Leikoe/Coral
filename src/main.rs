@@ -28,6 +28,7 @@ pub struct World {
 #[derive(Debug)]
 pub struct RobotCommand {
     vel: Vec2,
+    angular_vel: f32,
     dribble: bool,
     kick: bool,
 }
@@ -57,10 +58,11 @@ fn launch_control_thread(mut world: World) -> JoinHandle<()> {
             println!("\tball pos: {:?}", world.ball.get_pos());
             for r in world.team.values() {
                 println!(
-                    "\trobot {} | is_dribbling: {} | pos: {:?}",
+                    "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
                     r.get_id(),
                     r.is_dribbling(),
                     r.get_pos(),
+                    r.get_orientation()
                 );
             }
 
@@ -70,7 +72,8 @@ fn launch_control_thread(mut world: World) -> JoinHandle<()> {
                 .drain()
                 .for_each(|(rid, command)| {
                     let r = world.team.get_mut(&rid).unwrap(); // TODO: check we have the robot to send the order to
-                    r.apply_vel(command.vel);
+                    r.apply_vel(dbg!(&command).vel);
+                    r.apply_angular_vel(command.angular_vel);
                 });
         }
     })
@@ -92,30 +95,30 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 #[tokio::main]
 async fn main() {
     let mut world = World {
-        ball: Ball::new(Point2::new(0.6, 0.), Vec2::new(0.4, 0.4)),
+        ball: Ball::new(Point2::new(0.6, 0.), Vec2::new(-1., 0.4)),
         team: HashMap::new(),
     };
-    world.team.insert(0, Robot::new(0, Point2::zero()));
-    world.team.insert(1, Robot::new(1, Point2::zero()));
-    world.team.insert(2, Robot::new(2, Point2::zero()));
+    world.team.insert(0, Robot::new(0, Point2::zero(), 0.));
+    world.team.insert(1, Robot::new(1, Point2::zero(), 0.));
+    world.team.insert(2, Robot::new(2, Point2::zero(), 0.));
 
     let control_loop_thread = launch_control_thread(world.clone());
 
-    do_square(world.team.get(&0).unwrap()).await;
-    // we simulate a penalty after 2s
-    let _ = tokio::time::timeout(
-        Duration::from_millis(500),
-        three_attackers_attack(
-            world.team.get(&1).unwrap(),
-            world.team.get(&0).unwrap(),
-            world.team.get(&2).unwrap(),
-        ),
-    )
-    .await;
+    // do_square(world.team.get(&0).unwrap()).await;
+    // // we simulate a penalty after 2s
+    // let _ = tokio::time::timeout(
+    //     Duration::from_millis(500),
+    //     three_attackers_attack(
+    //         world.team.get(&1).unwrap(),
+    //         world.team.get(&0).unwrap(),
+    //         world.team.get(&2).unwrap(),
+    //     ),
+    // )
+    // .await;
 
-    // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
-    make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
-    go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
+    // // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
+    // make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
+    // go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
 
     intercept(world.team.get(&0).unwrap(), &world.ball).await;
 

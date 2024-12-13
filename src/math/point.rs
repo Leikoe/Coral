@@ -17,6 +17,10 @@ impl Point2 {
         Self { x: 0., y: 0. }
     }
 
+    pub fn to(&self, rhs: Point2) -> Vec2 {
+        rhs - *self
+    }
+
     pub fn distance_to(&self, rhs: Point2) -> f32 {
         (rhs - *self).norm()
     }
