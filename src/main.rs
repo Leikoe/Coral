@@ -1,10 +1,12 @@
+#![feature(future_join)]
+
 pub mod robot;
 pub mod strategies;
 pub mod vec2;
 
 use robot::{Robot, RobotId};
 use std::{collections::HashMap, time::Duration};
-use strategies::{square::SquareStrategy, Strategy};
+use strategies::{square::SquareStrategy, three_attackers::ThreeAttackersStrategy, Strategy};
 use tokio::task::JoinHandle;
 use vec2::Vec2f32;
 
@@ -37,15 +39,18 @@ fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
         loop {
             interval.tick().await; // first tick ticks immediately that's why it's at the beginning
 
-            dbg!(team.values().map(|r| r.get_pos()).collect::<Vec<Vec2f32>>());
+            for r in team.values() {
+                println!("id: {} | pos: {:?}", r.get_id(), r.get_pos());
+            }
 
             println!("[DEBUG] sending commands!");
+            // take the commands & apply them (simulate real robot)
             take_next_commands(&mut team)
                 .drain()
                 .for_each(|(rid, command)| {
                     let r = team.get_mut(&rid).unwrap(); // TODO: check we have the robot to send the order to
                     r.apply_vel(command.vel);
-                }); // here we would send that to the physical robots controller
+                });
         }
     })
 }
@@ -55,9 +60,13 @@ fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
 async fn main() {
     let mut team: HashMap<RobotId, Robot> = HashMap::new();
     team.insert(0, Robot::new(0, Vec2f32::zero()));
+    team.insert(1, Robot::new(1, Vec2f32::zero()));
+    team.insert(2, Robot::new(2, Vec2f32::zero()));
 
     let control_loop_thread = launch_control_thread(team.clone());
-    SquareStrategy.run(team).await;
+
+    SquareStrategy.run(team.clone()).await;
+    ThreeAttackersStrategy.run(team).await;
 
     control_loop_thread.abort();
 }

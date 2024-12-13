@@ -4,7 +4,7 @@ use crate::{vec2::Vec2f32, RobotCommand, CONTROL_PERIOD};
 use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
-const IS_CLOSE_EPSILON: f32 = 0.05;
+const IS_CLOSE_EPSILON: f32 = 0.01;
 
 #[derive(Clone)]
 pub struct Robot {
