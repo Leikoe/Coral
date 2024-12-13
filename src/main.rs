@@ -1,20 +1,24 @@
 #![feature(future_join)]
 
-pub mod actions;
-pub mod robot;
-pub mod vec2;
+mod actions;
+mod ball;
+mod math;
+mod robot;
+mod trackable;
 
 use actions::*;
+use ball::Ball;
+use math::*;
 use robot::{Robot, RobotId};
 use std::{collections::HashMap, time::Duration};
 use tokio::task::JoinHandle;
-use vec2::Vec2f32;
+use trackable::Trackable;
 
 const CONTROL_PERIOD: Duration = Duration::from_millis(50);
 
 #[derive(Debug)]
 pub struct RobotCommand {
-    vel: Vec2f32,
+    vel: Vec2,
     dribble: bool,
     kick: bool,
 }
@@ -65,10 +69,11 @@ fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
+    let ball = Ball::new(Vec2::new(0.6, 0.)); // right in front of the goal
     let mut team: HashMap<RobotId, Robot> = HashMap::new();
-    team.insert(0, Robot::new(0, Vec2f32::zero()));
-    team.insert(1, Robot::new(1, Vec2f32::zero()));
-    team.insert(2, Robot::new(2, Vec2f32::zero()));
+    team.insert(0, Robot::new(0, Vec2::zero()));
+    team.insert(1, Robot::new(1, Vec2::zero()));
+    team.insert(2, Robot::new(2, Vec2::zero()));
 
     let control_loop_thread = launch_control_thread(team.clone());
 
@@ -83,7 +88,7 @@ async fn main() {
         ),
     )
     .await;
-    go_get_ball(team.get(&0).unwrap(), Vec2f32::new(1., 1.)).await;
+    go_get_ball(team.get(&0).unwrap(), &ball).await;
 
     control_loop_thread.abort();
 }
