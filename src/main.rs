@@ -10,7 +10,10 @@ use actions::*;
 use ball::Ball;
 use math::*;
 use robot::{Robot, RobotId};
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 use tokio::task::JoinHandle;
 use trackable::Trackable;
 
@@ -37,17 +40,18 @@ fn take_next_commands(robots: &mut HashMap<RobotId, Robot>) -> HashMap<RobotId, 
         .collect()
 }
 
-fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
+fn launch_control_thread(mut team: HashMap<RobotId, Robot>, ball: Ball) -> JoinHandle<()> {
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     tokio::spawn(async move {
         // Robot control loop, 1Hz
         loop {
             interval.tick().await; // first tick ticks immediately that's why it's at the beginning
 
-            println!("[DEBUG] robots state");
+            println!("[DEBUG] world state");
+            println!("\tball pos: {:?}", ball.get_pos());
             for r in team.values() {
                 println!(
-                    "\tid: {} | is_dribbling: {} | pos: {:?}",
+                    "\trobot {} | is_dribbling: {} | pos: {:?}",
                     r.get_id(),
                     r.is_dribbling(),
                     r.get_pos(),
@@ -66,6 +70,18 @@ fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
     })
 }
 
+fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let start = Instant::now();
+        let mut interval = tokio::time::interval(CONTROL_PERIOD);
+        while timeout.is_none() || start.elapsed() < timeout.unwrap() {
+            interval.tick().await;
+            let elapsed_secs = start.elapsed().as_secs_f32();
+            ball.set_pos(Point2::new(elapsed_secs.cos(), elapsed_secs.sin()));
+        }
+    })
+}
+
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
@@ -75,7 +91,7 @@ async fn main() {
     team.insert(1, Robot::new(1, Point2::zero()));
     team.insert(2, Robot::new(2, Point2::zero()));
 
-    let control_loop_thread = launch_control_thread(team.clone());
+    let control_loop_thread = launch_control_thread(team.clone(), ball.clone());
 
     do_square(team.get(&0).unwrap()).await;
     // we simulate a penalty after 2s
@@ -88,6 +104,9 @@ async fn main() {
         ),
     )
     .await;
+
+    // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
+    make_ball_spin(ball.clone(), Some(Duration::from_secs(5)));
     go_get_ball(team.get(&0).unwrap(), &ball).await;
 
     control_loop_thread.abort();

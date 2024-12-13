@@ -12,6 +12,12 @@ impl Ball {
             pos: Arc::new(Mutex::new(pos)),
         }
     }
+
+    // this is used for testing
+    pub fn set_pos(&self, pos: Point2) {
+        let mut self_pos = self.pos.lock().unwrap();
+        *self_pos = pos;
+    }
 }
 
 impl Trackable for Ball {

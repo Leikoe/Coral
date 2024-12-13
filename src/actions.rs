@@ -19,8 +19,7 @@ pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_
 }
 
 pub async fn go_get_ball(robot: &Robot, ball: &Ball) {
-    // TODO: ball should be a ref to a ball with internal mutable state
     robot.enable_dribbler();
-    robot.goto(ball).await;
+    robot.goto(ball).await; // this will follow the ball even if it moves
     println!("got ball!");
 }
