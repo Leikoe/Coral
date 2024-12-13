@@ -17,7 +17,7 @@ use std::{
 use tokio::task::JoinHandle;
 use trackable::Trackable;
 
-const CONTROL_PERIOD: Duration = Duration::from_millis(50);
+pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
 
 #[derive(Clone)]
 pub struct World {
@@ -92,7 +92,7 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 #[tokio::main]
 async fn main() {
     let mut world = World {
-        ball: Ball::new(Point2::new(0.6, 0.), Vec2::zero()),
+        ball: Ball::new(Point2::new(0.6, 0.), Vec2::new(0.4, 0.4)),
         team: HashMap::new(),
     };
     world.team.insert(0, Robot::new(0, Point2::zero()));
@@ -116,6 +116,8 @@ async fn main() {
     // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
     make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
     go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
+
+    intercept(world.team.get(&0).unwrap(), &world.ball).await;
 
     control_loop_thread.abort();
 }
