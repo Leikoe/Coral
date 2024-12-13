@@ -66,7 +66,9 @@ async fn main() {
     let control_loop_thread = launch_control_thread(team.clone());
 
     SquareStrategy.run(team.clone()).await;
-    ThreeAttackersStrategy.run(team).await;
+    // we simulate a penalty after 2s
+    let _ =
+        tokio::time::timeout(Duration::from_millis(500), ThreeAttackersStrategy.run(team)).await;
 
     control_loop_thread.abort();
 }
