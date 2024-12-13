@@ -1,12 +1,12 @@
 #![feature(future_join)]
 
+pub mod actions;
 pub mod robot;
-pub mod strategies;
 pub mod vec2;
 
+use actions::*;
 use robot::{Robot, RobotId};
 use std::{collections::HashMap, time::Duration};
-use strategies::{square::SquareStrategy, three_attackers::ThreeAttackersStrategy, Strategy};
 use tokio::task::JoinHandle;
 use vec2::Vec2f32;
 
@@ -65,10 +65,17 @@ async fn main() {
 
     let control_loop_thread = launch_control_thread(team.clone());
 
-    SquareStrategy.run(team.clone()).await;
+    do_square(team.get(&0).unwrap()).await;
     // we simulate a penalty after 2s
-    let _ =
-        tokio::time::timeout(Duration::from_millis(500), ThreeAttackersStrategy.run(team)).await;
+    let _ = tokio::time::timeout(
+        Duration::from_millis(500),
+        three_attackers_attack(
+            team.get(&1).unwrap(),
+            team.get(&0).unwrap(),
+            team.get(&2).unwrap(),
+        ),
+    )
+    .await;
 
     control_loop_thread.abort();
 }
