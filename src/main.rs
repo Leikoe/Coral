@@ -69,11 +69,11 @@ fn launch_control_thread(mut team: HashMap<RobotId, Robot>) -> JoinHandle<()> {
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
-    let ball = Ball::new(Vec2::new(0.6, 0.)); // right in front of the goal
+    let ball = Ball::new(Point2::new(0.6, 0.)); // right in front of the goal
     let mut team: HashMap<RobotId, Robot> = HashMap::new();
-    team.insert(0, Robot::new(0, Vec2::zero()));
-    team.insert(1, Robot::new(1, Vec2::zero()));
-    team.insert(2, Robot::new(2, Vec2::zero()));
+    team.insert(0, Robot::new(0, Point2::zero()));
+    team.insert(1, Robot::new(1, Point2::zero()));
+    team.insert(2, Robot::new(2, Point2::zero()));
 
     let control_loop_thread = launch_control_thread(team.clone());
 

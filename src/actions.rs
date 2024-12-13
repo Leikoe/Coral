@@ -1,19 +1,19 @@
-use crate::{Ball, Robot, Vec2};
+use crate::{Ball, Point2, Robot};
 use std::future::join;
 
 pub async fn do_square(robot: &Robot) {
-    robot.goto(Vec2::new(0., 1.)).await;
-    robot.goto(Vec2::new(1., 1.)).await;
-    robot.goto(Vec2::new(1., 0.)).await;
-    robot.goto(Vec2::new(0., 0.)).await;
+    robot.goto(&Point2::new(0., 1.)).await;
+    robot.goto(&Point2::new(1., 1.)).await;
+    robot.goto(&Point2::new(1., 0.)).await;
+    robot.goto(&Point2::new(0., 0.)).await;
     println!("reached dest!");
 }
 
 pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {
     join!(
-        left_winger.goto(Vec2::new(0.5, 0.5)),
-        right_winger.goto(Vec2::new(0.5, -0.5)),
-        fronter.goto(Vec2::new(0.5, 0.)),
+        left_winger.goto(&Point2::new(0.5, 0.5)),
+        right_winger.goto(&Point2::new(0.5, -0.5)),
+        fronter.goto(&Point2::new(0.5, 0.)),
     )
     .await;
 }

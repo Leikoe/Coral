@@ -1,7 +1,4 @@
-use std::{
-    ops::{Add, Div, Sub},
-    sync::{Arc, Mutex},
-};
+use std::ops::{Add, Div, Sub};
 
 use crate::trackable::Trackable;
 
@@ -51,6 +48,16 @@ impl Div<f32> for Vec2 {
 pub struct Point2 {
     pub x: f32,
     pub y: f32,
+}
+
+impl Point2 {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+
+    pub fn zero() -> Self {
+        Self { x: 0., y: 0. }
+    }
 }
 
 impl Sub for Point2 {

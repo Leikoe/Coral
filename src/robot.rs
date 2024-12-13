@@ -52,7 +52,7 @@ impl Robot {
         pos.y += vel.y;
     }
 
-    pub async fn goto<T: Trackable>(&self, destination: T) {
+    pub async fn goto<T: Trackable>(&self, destination: &T) {
         let mut cur_pos = self.get_pos();
         let mut to_pos = destination.get_pos() - cur_pos;
 
