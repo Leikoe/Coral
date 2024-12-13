@@ -11,6 +11,10 @@ impl Vec2f32 {
         Self { x, y }
     }
 
+    pub fn zero() -> Self {
+        Self::new(0., 0.)
+    }
+
     pub fn norm(&self) -> f32 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
