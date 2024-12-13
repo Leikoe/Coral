@@ -69,20 +69,21 @@ impl Robot {
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         while to_pos.norm() > IS_CLOSE_EPSILON {
+            let angle_diff = angle
+                .map(|x| angle_difference(x as f64, self.get_orientation() as f64) as f32)
+                .unwrap_or_default();
             {
                 let mut next_command = self.next_command.lock().unwrap();
                 next_command.replace(RobotCommand {
                     vel: Vec2::new(to_pos.x / 10., to_pos.y / 10.),
-                    angular_vel: angle
-                        .map(|x| angle_difference(x as f64, self.get_orientation() as f64) as f32)
-                        .unwrap_or_default(),
+                    angular_vel: angle_diff / 10.,
                     kick: false,
                     dribble: self.is_dribbling(),
                 });
             }
             println!("ANGLE {}", angle.unwrap_or_default());
             interval.tick().await;
-            cur_pos = self.get_pos();
+            cur_pos = self.get_pos(); // compute diff
             to_pos = destination.get_pos() - cur_pos;
         }
     }

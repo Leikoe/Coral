@@ -1,6 +1,7 @@
 use crate::{trackable::Trackable, Ball, Line, Point2, Robot, CONTROL_PERIOD};
 use std::{
     future::{join, IntoFuture},
+    process::exit,
     time::Duration,
 };
 
@@ -45,7 +46,7 @@ pub async fn attak(robot: &Robot, ball: &Ball) {
 }
 
 pub async fn intercept(robot: &Robot, ball: &Ball) {
-    let orientation = robot.get_pos().to(ball.get_pos()).angle();
+    let orientation = robot.to(ball).angle();
     // if ball.get_vel().norm() < 0.4 {
     //     robot.goto(&ball.get_pos()).await;
     //     return;

@@ -25,7 +25,7 @@ impl Vec2 {
 
     /// get the angle in degrees of the
     pub fn angle(&self) -> f32 {
-        f32::atan(self.y / self.x)
+        self.y.atan2(self.x)
     }
 
     pub fn dot(&self, rhs: Self) -> f32 {

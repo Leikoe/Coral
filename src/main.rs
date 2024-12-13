@@ -72,7 +72,7 @@ fn launch_control_thread(mut world: World) -> JoinHandle<()> {
                 .drain()
                 .for_each(|(rid, command)| {
                     let r = world.team.get_mut(&rid).unwrap(); // TODO: check we have the robot to send the order to
-                    r.apply_vel(dbg!(&command).vel);
+                    r.apply_vel(command.vel);
                     r.apply_angular_vel(command.angular_vel);
                 });
         }
@@ -95,7 +95,7 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 #[tokio::main]
 async fn main() {
     let mut world = World {
-        ball: Ball::new(Point2::new(0.6, 0.), Vec2::new(-1., 0.4)),
+        ball: Ball::new(Point2::new(-0.6, -0.2), Vec2::new(0.4, 0.4)),
         team: HashMap::new(),
     };
     world.team.insert(0, Robot::new(0, Point2::zero(), 0.));
