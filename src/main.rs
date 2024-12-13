@@ -92,7 +92,7 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 #[tokio::main]
 async fn main() {
     let mut world = World {
-        ball: Ball::new(Point2::new(0.6, 0.)),
+        ball: Ball::new(Point2::new(0.6, 0.), Vec2::zero()),
         team: HashMap::new(),
     };
     world.team.insert(0, Robot::new(0, Point2::zero()));

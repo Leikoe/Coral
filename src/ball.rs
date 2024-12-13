@@ -1,15 +1,17 @@
-use crate::{trackable::Trackable, Point2};
+use crate::{trackable::Trackable, Point2, Vec2};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
 pub struct Ball {
     pos: Arc<Mutex<Point2>>,
+    vel: Arc<Mutex<Vec2>>,
 }
 
 impl Ball {
-    pub fn new(pos: Point2) -> Self {
+    pub fn new(pos: Point2, vel: Vec2) -> Self {
         Self {
             pos: Arc::new(Mutex::new(pos)),
+            vel: Arc::new(Mutex::new(vel)),
         }
     }
 
@@ -17,6 +19,10 @@ impl Ball {
     pub fn set_pos(&self, pos: Point2) {
         let mut self_pos = self.pos.lock().unwrap();
         *self_pos = pos;
+    }
+
+    pub fn get_vel(&self) -> Vec2 {
+        *self.vel.lock().unwrap()
     }
 }
 

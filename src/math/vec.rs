@@ -18,6 +18,19 @@ impl Vec2 {
     pub fn norm(&self) -> f32 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
+
+    pub fn normalized(&self) -> Self {
+        self.clone() / self.norm()
+    }
+
+    /// get the angle in degrees of the
+    pub fn angle(&self) -> f32 {
+        f32::atan(self.y / self.x)
+    }
+
+    pub fn dot(&self, rhs: Self) -> f32 {
+        self.x * rhs.x + self.y * rhs.y
+    }
 }
 
 impl Add for Vec2 {

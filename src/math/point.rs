@@ -16,6 +16,10 @@ impl Point2 {
     pub fn zero() -> Self {
         Self { x: 0., y: 0. }
     }
+
+    pub fn distance_to(&self, rhs: Point2) -> f32 {
+        (rhs - *self).norm()
+    }
 }
 
 impl Sub for Point2 {
