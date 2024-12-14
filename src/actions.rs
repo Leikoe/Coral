@@ -48,7 +48,7 @@ pub async fn attak(robot: &Robot, ball: &Ball) {
 pub async fn intercept(robot: &Robot, ball: &Ball) {
     let target_orientation = robot.to(ball).angle();
     if ball.get_vel().norm() < 0.4 {
-        robot.goto(&ball.get_pos(), Some(target_orientation)).await;
+        robot.goto(ball, Some(target_orientation)).await;
         return;
     }
     let ball_trajectory = Line::new(
