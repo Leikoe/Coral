@@ -9,3 +9,9 @@ pub trait Trackable {
         self.get_pos().distance_to(rhs.get_pos())
     }
 }
+
+impl<T: Fn() -> R, R: Trackable> Trackable for T {
+    fn get_pos(&self) -> Point2 {
+        self().get_pos()
+    }
+}
