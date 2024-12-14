@@ -46,18 +46,18 @@ pub async fn attak(robot: &Robot, ball: &Ball) {
 }
 
 pub async fn intercept(robot: &Robot, ball: &Ball) {
-    let orientation = robot.to(ball).angle();
+    let target_orientation = robot.to(ball).angle();
     if ball.get_vel().norm() < 0.4 {
-        robot.goto(&ball.get_pos(), Some(orientation)).await;
+        robot.goto(&ball.get_pos(), Some(target_orientation)).await;
         return;
     }
-    let trajectory = Line::new(
+    let ball_trajectory = Line::new(
         ball.get_pos(),
         ball.get_pos() + ball.get_vel().normalized() * 100.,
     );
-    let target = trajectory.closest_point_to(robot.get_pos());
+    let target_pos = ball_trajectory.closest_point_to(robot.get_pos());
 
     robot.enable_dribbler();
-    robot.goto(&target, Some(orientation)).await;
+    robot.goto(&target_pos, Some(target_orientation)).await;
     robot.disable_dribbler();
 }
