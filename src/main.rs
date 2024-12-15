@@ -36,14 +36,7 @@ pub struct RobotCommand {
 fn take_next_commands(robots: &mut HashMap<RobotId, Robot>) -> HashMap<RobotId, RobotCommand> {
     robots
         .values()
-        .filter_map(|r| {
-            let mut next_command = r.next_command.lock().unwrap();
-            if next_command.is_some() {
-                Some((r.get_id(), next_command.take().unwrap()))
-            } else {
-                None
-            }
-        })
+        .map(|r| (r.get_id(), r.make_command()))
         .collect()
 }
 
@@ -60,7 +53,7 @@ fn launch_control_thread(mut world: World) -> JoinHandle<()> {
                 println!(
                     "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
                     r.get_id(),
-                    r.is_dribbling(),
+                    r.should_dribble(),
                     r.get_pos(),
                     r.get_orientation()
                 );
@@ -104,21 +97,21 @@ async fn main() {
 
     let control_loop_thread = launch_control_thread(world.clone());
 
-    // do_square(world.team.get(&0).unwrap()).await;
-    // // we simulate a penalty after 2s
-    // let _ = tokio::time::timeout(
-    //     Duration::from_millis(500),
-    //     three_attackers_attack(
-    //         world.team.get(&1).unwrap(),
-    //         world.team.get(&0).unwrap(),
-    //         world.team.get(&2).unwrap(),
-    //     ),
-    // )
-    // .await;
+    do_square(world.team.get(&0).unwrap()).await;
+    // we simulate a penalty after 2s
+    let _ = tokio::time::timeout(
+        Duration::from_millis(500),
+        three_attackers_attack(
+            world.team.get(&1).unwrap(),
+            world.team.get(&0).unwrap(),
+            world.team.get(&2).unwrap(),
+        ),
+    )
+    .await;
 
-    // // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
-    // make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
-    // go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
+    // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
+    make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
+    go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
 
     intercept(world.team.get(&0).unwrap(), &world.ball).await;
 

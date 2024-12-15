@@ -9,8 +9,10 @@ pub struct Robot {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
     orientation: Arc<Mutex<f32>>,
-    is_dribbling: Arc<Mutex<bool>>,
-    pub next_command: Arc<Mutex<Option<RobotCommand>>>,
+    // control stuff
+    target_vel: Arc<Mutex<Vec2>>,
+    target_angular_vel: Arc<Mutex<f32>>,
+    should_dribble: Arc<Mutex<bool>>,
 }
 
 impl Trackable for Robot {
@@ -25,8 +27,9 @@ impl Robot {
             id,
             pos: Arc::new(Mutex::new(pos)),
             orientation: Arc::new(Mutex::new(orientation)),
-            is_dribbling: Arc::new(Mutex::new(false)),
-            next_command: Arc::new(Mutex::new(None)),
+            target_vel: Arc::new(Mutex::new(Vec2::zero())),
+            target_angular_vel: Arc::new(Mutex::new(0.)),
+            should_dribble: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -35,12 +38,12 @@ impl Robot {
     }
 
     pub fn enable_dribbler(&self) {
-        let mut is_dribbling = self.is_dribbling.lock().unwrap();
+        let mut is_dribbling = self.should_dribble.lock().unwrap();
         *is_dribbling = true;
     }
 
     pub fn disable_dribbler(&self) {
-        let mut is_dribbling = self.is_dribbling.lock().unwrap();
+        let mut is_dribbling = self.should_dribble.lock().unwrap();
         *is_dribbling = false;
     }
 
@@ -48,8 +51,8 @@ impl Robot {
         *self.orientation.lock().unwrap()
     }
 
-    pub fn is_dribbling(&self) -> bool {
-        self.is_dribbling.lock().unwrap().clone()
+    pub fn should_dribble(&self) -> bool {
+        self.should_dribble.lock().unwrap().clone()
     }
 
     pub fn apply_vel(&mut self, vel: Vec2) {
@@ -63,6 +66,24 @@ impl Robot {
         *orientation += angular_vel;
     }
 
+    pub fn get_target_vel(&self) -> Vec2 {
+        *self.target_vel.lock().unwrap()
+    }
+
+    pub fn get_target_angular_vel(&self) -> f32 {
+        *self.target_angular_vel.lock().unwrap()
+    }
+
+    pub fn set_target_vel(&self, target_vel: Vec2) {
+        let mut self_target_vel = self.target_vel.lock().unwrap();
+        *self_target_vel = target_vel;
+    }
+
+    pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
+        let mut self_target_angular_vel = self.target_angular_vel.lock().unwrap();
+        *self_target_angular_vel = target_angular_vel;
+    }
+
     pub async fn goto<T: Trackable>(&self, destination: &T, angle: Option<f32>) {
         let mut cur_pos = self.get_pos();
         let mut to_pos = destination.get_pos() - cur_pos;
@@ -72,19 +93,22 @@ impl Robot {
             let angle_diff = angle
                 .map(|x| angle_difference(x as f64, self.get_orientation() as f64) as f32)
                 .unwrap_or_default();
-            {
-                let mut next_command = self.next_command.lock().unwrap();
-                next_command.replace(RobotCommand {
-                    vel: Vec2::new(to_pos.x / 10., to_pos.y / 10.),
-                    angular_vel: angle_diff / 10.,
-                    kick: false,
-                    dribble: self.is_dribbling(),
-                });
-            }
-            println!("ANGLE {}", angle.unwrap_or_default());
+            self.set_target_vel(Vec2::new(to_pos.x / 10., to_pos.y / 10.));
+            self.set_target_angular_vel(angle_diff / 10.);
+
+            // next iter starts here
             interval.tick().await;
             cur_pos = self.get_pos(); // compute diff
             to_pos = destination.get_pos() - cur_pos;
+        }
+    }
+
+    pub fn make_command(&self) -> RobotCommand {
+        RobotCommand {
+            vel: self.get_target_vel(),
+            angular_vel: self.get_target_angular_vel(),
+            kick: false,
+            dribble: self.should_dribble(),
         }
     }
 
