@@ -16,9 +16,10 @@ use plotters::{
 use robot::{Robot, RobotId};
 use std::{
     collections::HashMap,
+    net::Ipv4Addr,
     time::{Duration, Instant},
 };
-use tokio::task::JoinHandle;
+use tokio::{net::UdpSocket, task::JoinHandle};
 use trackable::*;
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
@@ -98,6 +99,17 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
+    let sock = UdpSocket::bind("0.0.0.0:10020").await.unwrap();
+    sock.join_multicast_v4(Ipv4Addr::new(224, 5, 23, 2), Ipv4Addr::UNSPECIFIED)
+        .unwrap();
+
+    let mut buff: [u8; 1024] = [0; 1024];
+    loop {
+        let received = sock.recv_from(&mut buff[..]).await.unwrap();
+        dbg!(received);
+    }
+
+    return;
     let mut world = World {
         // TODO: don't assume field dims
         field: Rect::new(Point2::new(-3.5, 1.75), Point2::new(3.5, -1.75)),
