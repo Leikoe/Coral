@@ -1,4 +1,4 @@
-use crate::{trackable::Trackable, Ball, Line, Point2, Robot};
+use crate::{trackable::Trackable, Ball, Line, Point2, Robot, World};
 use tokio::join;
 
 pub async fn do_square(robot: &Robot) {
@@ -7,6 +7,15 @@ pub async fn do_square(robot: &Robot) {
     robot.goto(&Point2::new(1., 0.), None).await;
     robot.goto(&Point2::new(0., 0.), None).await;
     println!("reached dest!");
+}
+
+pub async fn do_square_rrt(world: &World, robot: &Robot) -> Result<(), String> {
+    robot.goto_rrt(world, &Point2::new(0., 1.), None).await?;
+    robot.goto_rrt(world, &Point2::new(1., 1.), None).await?;
+    robot.goto_rrt(world, &Point2::new(1., 0.), None).await?;
+    robot.goto_rrt(world, &Point2::new(0., 0.), None).await?;
+    println!("reached dest!");
+    Ok(())
 }
 
 pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {

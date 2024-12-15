@@ -45,26 +45,32 @@ fn launch_control_thread(mut world: World) -> JoinHandle<()> {
         loop {
             interval.tick().await; // first tick ticks immediately that's why it's at the beginning
 
-            println!("[DEBUG] world state");
-            println!("\tball pos: {:?}", world.ball.get_pos());
-            for r in world.team.values() {
-                println!(
-                    "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
-                    r.get_id(),
-                    r.should_dribble(),
-                    r.get_pos(),
-                    r.get_orientation()
-                );
-            }
+            // println!("[DEBUG] world state");
+            // println!("\tball pos: {:?}", world.ball.get_pos());
+            // for r in world.team.values() {
+            //     println!(
+            //         "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
+            //         r.get_id(),
+            //         r.should_dribble(),
+            //         r.get_pos(),
+            //         r.get_orientation()
+            //     );
+            // }
 
-            println!("[DEBUG] sending commands!\n");
+            // println!("[DEBUG] sending commands!\n");
             // take the commands & apply them (simulate real robot)
             take_next_commands(&mut world.team)
                 .drain()
                 .for_each(|(rid, command)| {
-                    let r = world.team.get_mut(&rid).unwrap(); // TODO: check we have the robot to send the order to
-                    r.apply_vel(command.vel);
-                    r.apply_angular_vel(command.angular_vel);
+                    if let Some(r) = world.team.get_mut(&rid) {
+                        r.apply_vel(command.vel);
+                        r.apply_angular_vel(command.angular_vel);
+                    } else {
+                        eprintln!(
+                            "[WARNING] A command was sent to robot {} which isn't online!",
+                            rid
+                        );
+                    }
                 });
         }
     })
@@ -93,35 +99,41 @@ async fn main() {
         .team
         .insert(0, Robot::new(0, Point2::new(-2., 0.), 0.));
     world.team.insert(1, Robot::new(1, Point2::zero(), 0.));
-    // world.team.insert(2, Robot::new(2, Point2::zero(), 0.));
+    world
+        .team
+        .insert(2, Robot::new(2, Point2::new(0., -1.), 0.));
 
     // robot aliases
-    let (r0, r1) = (world.team.get(&0).unwrap(), world.team.get(&1).unwrap());
+    let (r0, r1, r2) = (
+        world.team.get(&0).unwrap(),
+        world.team.get(&1).unwrap(),
+        world.team.get(&2).unwrap(),
+    );
 
     let control_loop_thread = launch_control_thread(world.clone());
 
     // do a square
-    do_square(world.team.get(&0).unwrap()).await;
+    // do_square(r0).await;
 
-    // do a "three_attackers_attack" and simulate a penalty after 2s to early stop
-    let _ = tokio::time::timeout(
-        Duration::from_millis(500),
-        three_attackers_attack(
-            world.team.get(&1).unwrap(),
-            world.team.get(&0).unwrap(),
-            world.team.get(&2).unwrap(),
-        ),
-    )
-    .await;
+    // // do a "three_attackers_attack" and simulate a penalty after 2s to early stop
+    // let _ = tokio::time::timeout(
+    //     Duration::from_millis(500),
+    //     three_attackers_attack(r1, r2, r0),
+    // )
+    // .await;
 
-    // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
-    make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
-    go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
+    // // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
+    // make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
+    // go_get_ball(r0, &world.ball).await;
 
-    // do a ball interception
-    intercept(world.team.get(&0).unwrap(), &world.ball).await;
+    // // do a ball interception
+    // intercept(r0, &world.ball).await;
 
     // showcase obstacle avoidance goto
+    // teleport robots in place
+    r0.debug_tp(&Point2::new(-2., 0.), None);
+    r1.debug_tp(&Point2::new(0., 0.), None);
+    r2.debug_tp(&Point2::new(0., -1.), None);
     let path = r0
         .goto_rrt(&world, &Point2::new(2., 0.), None)
         .await

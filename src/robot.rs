@@ -106,39 +106,53 @@ impl Robot {
         }
     }
 
+    pub fn debug_tp<T: Trackable>(&self, destination: &T, angle: Option<f32>) {
+        let mut pos = self.pos.lock().unwrap();
+        *pos = destination.get_pos();
+
+        let angle = angle.unwrap_or(self.get_orientation());
+        let mut orientation = self.orientation.lock().unwrap();
+        *orientation = angle;
+    }
+
     pub async fn goto_rrt<T: Trackable>(
         &self,
         world: &World,
         destination: &T,
         angle: Option<f32>,
     ) -> Result<Vec<Point2>, String> {
-        let start = self.get_pos();
-        let goal = destination.get_pos();
+        let mut followed_path = Vec::new();
+        while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON {
+            let start = self.get_pos();
+            let goal = destination.get_pos();
+            let start_time = tokio::time::Instant::now();
+            let result = rrt::dual_rrt_connect(
+                &[start.x, start.y],
+                &[goal.x, goal.y],
+                |p: &[f32]| {
+                    let p = Point2::new(p[0], p[1]);
+                    !world.team.values().any(|r| p.distance_to(r) < 0.5)
+                },
+                || {
+                    let between = Uniform::new(-2.0, 2.0);
+                    let mut rng = rand::thread_rng();
+                    vec![between.sample(&mut rng), between.sample(&mut rng)]
+                },
+                0.5,
+                RRT_MAX_TRIES,
+            )?
+            .into_iter()
+            .nth(1)
+            .ok_or(format!("Couldn't find a path to {:?}", goal))?;
+            println!(
+                "[DEBUG] took {}s to compute path",
+                start_time.elapsed().as_secs_f64()
+            );
 
-        let result = rrt::dual_rrt_connect(
-            &[start.x, start.y],
-            &[goal.x, goal.y],
-            |p: &[f32]| {
-                let p = Point2::new(p[0], p[1]);
-                !world.team.values().any(|r| p.distance_to(r) < 0.5)
-            },
-            || {
-                let between = Uniform::new(-2.0, 2.0);
-                let mut rng = rand::thread_rng();
-                vec![between.sample(&mut rng), between.sample(&mut rng)]
-            },
-            0.5,
-            RRT_MAX_TRIES,
-        )?
-        .into_iter()
-        .map(|p| Point2::new(p[0], p[1]))
-        .collect::<Vec<Point2>>();
-
-        for p in &result {
-            self.goto(p, angle).await;
+            self.goto(&Point2::new(result[0], result[1]), angle).await;
+            followed_path.push(self.get_pos());
         }
-
-        Ok(result)
+        Ok(followed_path)
     }
 
     pub fn make_command(&self) -> RobotCommand {
