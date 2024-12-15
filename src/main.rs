@@ -100,24 +100,28 @@ async fn main() {
 
     let control_loop_thread = launch_control_thread(world.clone());
 
-    // do_square(world.team.get(&0).unwrap()).await;
-    // // we simulate a penalty after 2s
-    // let _ = tokio::time::timeout(
-    //     Duration::from_millis(500),
-    //     three_attackers_attack(
-    //         world.team.get(&1).unwrap(),
-    //         world.team.get(&0).unwrap(),
-    //         world.team.get(&2).unwrap(),
-    //     ),
-    // )
-    // .await;
+    // do a square
+    do_square(world.team.get(&0).unwrap()).await;
 
-    // // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
-    // make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
-    // go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
+    // do a "three_attackers_attack" and simulate a penalty after 2s to early stop
+    let _ = tokio::time::timeout(
+        Duration::from_millis(500),
+        three_attackers_attack(
+            world.team.get(&1).unwrap(),
+            world.team.get(&0).unwrap(),
+            world.team.get(&2).unwrap(),
+        ),
+    )
+    .await;
 
-    // intercept(world.team.get(&0).unwrap(), &world.ball).await;
+    // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
+    make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
+    go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
 
+    // do a ball interception
+    intercept(world.team.get(&0).unwrap(), &world.ball).await;
+
+    // showcase obstacle avoidance goto
     let path = r0
         .goto_rrt(&world, &Point2::new(2., 0.), None)
         .await
