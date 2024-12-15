@@ -9,7 +9,7 @@ use ball::Ball;
 use math::*;
 use plotters::{
     chart::{ChartBuilder, LabelAreaPosition},
-    prelude::{BitMapBackend, Circle, IntoDrawingArea, TriangleMarker},
+    prelude::{BitMapBackend, Circle, IntoDrawingArea},
     series::LineSeries,
     style::{BLUE, RED, WHITE},
 };
