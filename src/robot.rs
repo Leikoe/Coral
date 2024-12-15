@@ -145,8 +145,9 @@ impl Robot {
             .nth(1)
             .ok_or(format!("Couldn't find a path to {:?}", goal))?;
             println!(
-                "[DEBUG] took {}s to compute path",
-                start_time.elapsed().as_secs_f64()
+                "[DEBUG - robot {} - goto_rrt] took {}ms to compute path",
+                self.get_id(),
+                start_time.elapsed().as_millis()
             );
 
             self.goto(&Point2::new(result[0], result[1]), angle).await;
