@@ -10,6 +10,7 @@ use math::*;
 use plotters::{
     chart::{ChartBuilder, LabelAreaPosition},
     prelude::{BitMapBackend, Circle, IntoDrawingArea, TriangleMarker},
+    series::LineSeries,
     style::{BLUE, RED, WHITE},
 };
 use robot::{Robot, RobotId};
@@ -170,10 +171,10 @@ async fn main() {
     )
     .unwrap();
 
-    ctx.draw_series(
-        path.iter()
-            .map(|p| TriangleMarker::new((to_int(p.x), to_int(p.y)), 5, &RED)),
-    )
+    ctx.draw_series(LineSeries::new(
+        path.iter().map(|p| (to_int(p.x), to_int(p.y))),
+        &RED,
+    ))
     .unwrap();
 
     control_loop_thread.abort();
