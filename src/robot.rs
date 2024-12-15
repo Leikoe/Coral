@@ -1,12 +1,11 @@
 use crate::{
-    angle_difference, trackable::Trackable, Point2, RobotCommand, Vec2, World, CONTROL_PERIOD,
+    angle_difference, trackable::Trackable, Point2, Rect, RobotCommand, Vec2, World, CONTROL_PERIOD,
 };
-use rand::distributions::{Distribution, Uniform};
 use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
 const IS_CLOSE_EPSILON: f32 = 0.01;
-const RRT_MAX_TRIES: usize = 10_000;
+const RRT_MAX_TRIES: usize = 1_000;
 
 #[derive(Clone)]
 pub struct Robot {
@@ -77,12 +76,12 @@ impl Robot {
         *self.target_angular_vel.lock().unwrap()
     }
 
-    pub fn set_target_vel(&self, target_vel: Vec2) {
+    fn set_target_vel(&self, target_vel: Vec2) {
         let mut self_target_vel = self.target_vel.lock().unwrap();
         *self_target_vel = target_vel;
     }
 
-    pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
+    fn set_target_angular_vel(&self, target_angular_vel: f32) {
         let mut self_target_angular_vel = self.target_angular_vel.lock().unwrap();
         *self_target_angular_vel = target_angular_vel;
     }
@@ -121,24 +120,26 @@ impl Robot {
         destination: &T,
         angle: Option<f32>,
     ) -> Result<Vec<Point2>, String> {
-        let mut followed_path = Vec::new();
+        let mut followed_path = vec![self.get_pos()];
         while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON {
             let start = self.get_pos();
             let goal = destination.get_pos();
+            let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));
+
             let start_time = tokio::time::Instant::now();
             let result = rrt::dual_rrt_connect(
                 &[start.x, start.y],
                 &[goal.x, goal.y],
                 |p: &[f32]| {
-                    let p = Point2::new(p[0], p[1]);
-                    !world.team.values().any(|r| p.distance_to(r) < 0.5)
+                    let p = Point2::from_vec(p);
+                    !world
+                        .team
+                        .values()
+                        .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
+                        .any(|r| p.distance_to(r) < 0.3) // a robot is 10cm radius => 0.3 leaves 10cm between robots
                 },
-                || {
-                    let between = Uniform::new(-2.0, 2.0);
-                    let mut rng = rand::thread_rng();
-                    vec![between.sample(&mut rng), between.sample(&mut rng)]
-                },
-                0.5,
+                || rect.sample_inside().to_vec(),
+                0.1,
                 RRT_MAX_TRIES,
             )?
             .into_iter()

@@ -1,9 +1,11 @@
 pub mod line;
 pub mod point;
+pub mod rect;
 pub mod vec;
 
 pub use line::*;
 pub use point::*;
+pub use rect::*;
 pub use vec::*;
 
 use std::f64::consts::{PI, TAU};

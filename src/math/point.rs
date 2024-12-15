@@ -20,6 +20,14 @@ impl Point2 {
     pub fn to(&self, rhs: Point2) -> Vec2 {
         rhs - *self
     }
+
+    pub fn from_vec(point: &[f32]) -> Self {
+        Self::new(point[0], point[1])
+    }
+
+    pub fn to_vec(self) -> Vec<f32> {
+        vec![self.x, self.y]
+    }
 }
 
 impl Sub for Point2 {

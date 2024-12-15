@@ -7,6 +7,11 @@ mod trackable;
 use actions::*;
 use ball::Ball;
 use math::*;
+use plotters::{
+    chart::{ChartBuilder, LabelAreaPosition},
+    prelude::{BitMapBackend, Circle, IntoDrawingArea, TriangleMarker},
+    style::{BLUE, RED, WHITE},
+};
 use robot::{Robot, RobotId};
 use std::{
     collections::HashMap,
@@ -15,10 +20,11 @@ use std::{
 use tokio::task::JoinHandle;
 use trackable::*;
 
-pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
+pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 
 #[derive(Clone)]
 pub struct World {
+    pub field: Rect,
     pub ball: Ball,
     pub team: HashMap<RobotId, Robot>,
 }
@@ -92,6 +98,8 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 #[tokio::main]
 async fn main() {
     let mut world = World {
+        // TODO: don't assume field dims
+        field: Rect::new(Point2::new(-3.5, 1.75), Point2::new(3.5, -1.75)),
         ball: Ball::new(Point2::new(-0.6, -0.2), Vec2::new(0.4, 0.4)),
         team: HashMap::new(),
     };
@@ -131,16 +139,15 @@ async fn main() {
 
     // showcase obstacle avoidance goto
     // teleport robots in place
-    r0.debug_tp(&Point2::new(-2., 0.), None);
+    r0.debug_tp(&Point2::new(-1., 0.), None);
     r1.debug_tp(&Point2::new(0., 0.), None);
     r2.debug_tp(&Point2::new(0., -1.), None);
     let path = r0
-        .goto_rrt(&world, &Point2::new(2., 0.), None)
+        .goto_rrt(&world, &Point2::new(1., 0.), None)
         .await
         .unwrap();
 
     // PLOT
-    use plotters::prelude::*;
     let root_area = BitMapBackend::new("plot.png", (600, 400)).into_drawing_area();
     root_area.fill(&WHITE).unwrap();
 
@@ -150,7 +157,7 @@ async fn main() {
         .set_label_area_size(LabelAreaPosition::Left, 40)
         .set_label_area_size(LabelAreaPosition::Bottom, 40)
         .caption("Evitement", ("sans-serif", 40))
-        .build_cartesian_2d(-40..40, -40..40)
+        .build_cartesian_2d(-20..20, -15..15)
         .unwrap();
 
     ctx.configure_mesh().draw().unwrap();
