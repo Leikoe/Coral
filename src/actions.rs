@@ -1,18 +1,5 @@
-use crate::{trackable::Trackable, Ball, Line, Point2, Robot, CONTROL_PERIOD};
-use std::{future::IntoFuture, process::exit, time::Duration};
+use crate::{trackable::Trackable, Ball, Line, Point2, Robot};
 use tokio::join;
-
-/// Create a Future which does f() once cond() is true. (Check cond() at check_interval_period intervals)
-async fn once<C: Fn() -> bool, F: IntoFuture>(cond: C, f: F, check_interval_period: Duration) {
-    let mut inteval = tokio::time::interval(check_interval_period);
-    loop {
-        inteval.tick().await;
-        if cond() {
-            f.into_future().await;
-            break;
-        }
-    }
-}
 
 pub async fn do_square(robot: &Robot) {
     robot.goto(&Point2::new(0., 1.), None).await;
