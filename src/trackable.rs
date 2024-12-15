@@ -5,8 +5,8 @@ pub trait Trackable {
     fn to<T: Trackable>(&self, rhs: &T) -> Vec2 {
         self.get_pos().to(rhs.get_pos())
     }
-    fn distance<T: Trackable>(&self, rhs: &T) -> f32 {
-        self.get_pos().distance_to(rhs.get_pos())
+    fn distance_to<T: Trackable>(&self, rhs: &T) -> f32 {
+        (rhs.get_pos() - self.get_pos()).norm()
     }
 }
 

@@ -1,8 +1,12 @@
-use crate::{angle_difference, trackable::Trackable, Point2, RobotCommand, Vec2, CONTROL_PERIOD};
+use crate::{
+    angle_difference, trackable::Trackable, Point2, RobotCommand, Vec2, World, CONTROL_PERIOD,
+};
+use rand::distributions::{Distribution, Uniform};
 use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
 const IS_CLOSE_EPSILON: f32 = 0.01;
+const RRT_MAX_TRIES: usize = 10_000;
 
 #[derive(Clone)]
 pub struct Robot {
@@ -57,8 +61,7 @@ impl Robot {
 
     pub fn apply_vel(&mut self, vel: Vec2) {
         let mut pos = self.pos.lock().unwrap();
-        pos.x += vel.x;
-        pos.y += vel.y;
+        *pos += vel;
     }
 
     pub fn apply_angular_vel(&mut self, angular_vel: f32) {
@@ -101,6 +104,41 @@ impl Robot {
             cur_pos = self.get_pos(); // compute diff
             to_pos = destination.get_pos() - cur_pos;
         }
+    }
+
+    pub async fn goto_rrt<T: Trackable>(
+        &self,
+        world: &World,
+        destination: &T,
+        angle: Option<f32>,
+    ) -> Result<Vec<Point2>, String> {
+        let start = self.get_pos();
+        let goal = destination.get_pos();
+
+        let result = rrt::dual_rrt_connect(
+            &[start.x, start.y],
+            &[goal.x, goal.y],
+            |p: &[f32]| {
+                let p = Point2::new(p[0], p[1]);
+                !world.team.values().any(|r| p.distance_to(r) < 0.5)
+            },
+            || {
+                let between = Uniform::new(-2.0, 2.0);
+                let mut rng = rand::thread_rng();
+                vec![between.sample(&mut rng), between.sample(&mut rng)]
+            },
+            0.5,
+            RRT_MAX_TRIES,
+        )?
+        .into_iter()
+        .map(|p| Point2::new(p[0], p[1]))
+        .collect::<Vec<Point2>>();
+
+        for p in &result {
+            self.goto(p, angle).await;
+        }
+
+        Ok(result)
     }
 
     pub fn make_command(&self) -> RobotCommand {

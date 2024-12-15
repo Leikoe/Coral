@@ -1,9 +1,6 @@
 use crate::{trackable::Trackable, Ball, Line, Point2, Robot, CONTROL_PERIOD};
-use std::{
-    future::{join, IntoFuture},
-    process::exit,
-    time::Duration,
-};
+use std::{future::IntoFuture, process::exit, time::Duration};
+use tokio::join;
 
 /// Create a Future which does f() once cond() is true. (Check cond() at check_interval_period intervals)
 async fn once<C: Fn() -> bool, F: IntoFuture>(cond: C, f: F, check_interval_period: Duration) {
@@ -26,12 +23,16 @@ pub async fn do_square(robot: &Robot) {
 }
 
 pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {
+    let (p1, p2, p3) = (
+        Point2::new(0.5, 0.5),
+        Point2::new(0.5, -0.5),
+        Point2::new(0.5, 0.),
+    );
     join!(
-        left_winger.goto(&Point2::new(0.5, 0.5), None),
-        right_winger.goto(&Point2::new(0.5, -0.5), None),
-        fronter.goto(&Point2::new(0.5, 0.), None),
-    )
-    .await;
+        left_winger.goto(&p1, None),
+        right_winger.goto(&p2, None),
+        fronter.goto(&p3, None),
+    );
 }
 
 pub async fn go_get_ball(robot: &Robot, ball: &Ball) {

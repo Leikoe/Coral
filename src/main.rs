@@ -1,5 +1,3 @@
-#![feature(future_join)]
-
 mod actions;
 mod ball;
 mod math;
@@ -91,29 +89,69 @@ async fn main() {
         ball: Ball::new(Point2::new(-0.6, -0.2), Vec2::new(0.4, 0.4)),
         team: HashMap::new(),
     };
-    world.team.insert(0, Robot::new(0, Point2::zero(), 0.));
+    world
+        .team
+        .insert(0, Robot::new(0, Point2::new(-2., 0.), 0.));
     world.team.insert(1, Robot::new(1, Point2::zero(), 0.));
-    world.team.insert(2, Robot::new(2, Point2::zero(), 0.));
+    // world.team.insert(2, Robot::new(2, Point2::zero(), 0.));
+
+    // robot aliases
+    let (r0, r1) = (world.team.get(&0).unwrap(), world.team.get(&1).unwrap());
 
     let control_loop_thread = launch_control_thread(world.clone());
 
-    do_square(world.team.get(&0).unwrap()).await;
-    // we simulate a penalty after 2s
-    let _ = tokio::time::timeout(
-        Duration::from_millis(500),
-        three_attackers_attack(
-            world.team.get(&1).unwrap(),
-            world.team.get(&0).unwrap(),
-            world.team.get(&2).unwrap(),
-        ),
+    // do_square(world.team.get(&0).unwrap()).await;
+    // // we simulate a penalty after 2s
+    // let _ = tokio::time::timeout(
+    //     Duration::from_millis(500),
+    //     three_attackers_attack(
+    //         world.team.get(&1).unwrap(),
+    //         world.team.get(&0).unwrap(),
+    //         world.team.get(&2).unwrap(),
+    //     ),
+    // )
+    // .await;
+
+    // // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
+    // make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
+    // go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
+
+    // intercept(world.team.get(&0).unwrap(), &world.ball).await;
+
+    let path = r0
+        .goto_rrt(&world, &Point2::new(2., 0.), None)
+        .await
+        .unwrap();
+
+    // PLOT
+    use plotters::prelude::*;
+    let root_area = BitMapBackend::new("plot.png", (600, 400)).into_drawing_area();
+    root_area.fill(&WHITE).unwrap();
+
+    let to_int = |f: f32| (f * 10.) as i32;
+
+    let mut ctx = ChartBuilder::on(&root_area)
+        .set_label_area_size(LabelAreaPosition::Left, 40)
+        .set_label_area_size(LabelAreaPosition::Bottom, 40)
+        .caption("Evitement", ("sans-serif", 40))
+        .build_cartesian_2d(-40..40, -40..40)
+        .unwrap();
+
+    ctx.configure_mesh().draw().unwrap();
+
+    ctx.draw_series(
+        world
+            .team
+            .iter()
+            .map(|(id, r)| Circle::new((to_int(r.get_pos().x), to_int(r.get_pos().y)), 5, &BLUE)),
     )
-    .await;
+    .unwrap();
 
-    // now we spin the ball and make the robot try to go get it to showcase the Trackable trait
-    make_ball_spin(world.ball.clone(), Some(Duration::from_secs(5)));
-    go_get_ball(world.team.get(&0).unwrap(), &world.ball).await;
-
-    intercept(world.team.get(&0).unwrap(), &world.ball).await;
+    ctx.draw_series(
+        path.iter()
+            .map(|p| TriangleMarker::new((to_int(p.x), to_int(p.y)), 5, &RED)),
+    )
+    .unwrap();
 
     control_loop_thread.abort();
 }

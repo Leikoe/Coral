@@ -1,8 +1,8 @@
 use super::vec::Vec2;
 use crate::trackable::Trackable;
-use std::ops::{Add, Sub};
+use std::ops::{Add, AddAssign, DivAssign, MulAssign, Sub, SubAssign};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Point2 {
     pub x: f32,
     pub y: f32,
@@ -14,15 +14,11 @@ impl Point2 {
     }
 
     pub fn zero() -> Self {
-        Self { x: 0., y: 0. }
+        Self::new(0., 0.)
     }
 
     pub fn to(&self, rhs: Point2) -> Vec2 {
         rhs - *self
-    }
-
-    pub fn distance_to(&self, rhs: Point2) -> f32 {
-        (rhs - *self).norm()
     }
 }
 
@@ -59,5 +55,33 @@ impl Sub<Vec2> for Point2 {
 impl Trackable for Point2 {
     fn get_pos(&self) -> Point2 {
         *self
+    }
+}
+
+impl AddAssign<Vec2> for Point2 {
+    fn add_assign(&mut self, rhs: Vec2) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
+impl SubAssign<Vec2> for Point2 {
+    fn sub_assign(&mut self, rhs: Vec2) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
+    }
+}
+
+impl MulAssign<f32> for Point2 {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.x *= rhs;
+        self.y *= rhs;
+    }
+}
+
+impl DivAssign<f32> for Point2 {
+    fn div_assign(&mut self, rhs: f32) {
+        self.x /= rhs;
+        self.y /= rhs;
     }
 }
