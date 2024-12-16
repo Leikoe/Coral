@@ -19,6 +19,7 @@ pub struct Robot {
     target_vel: Arc<Mutex<Vec2>>,
     target_angular_vel: Arc<Mutex<f32>>,
     should_dribble: Arc<Mutex<bool>>,
+    should_kick: Arc<Mutex<bool>>,
 }
 
 impl Trackable for Robot {
@@ -36,11 +37,25 @@ impl Robot {
             target_vel: Arc::new(Mutex::new(Vec2::zero())),
             target_angular_vel: Arc::new(Mutex::new(0.)),
             should_dribble: Arc::new(Mutex::new(false)),
+            should_kick: Arc::new(Mutex::new(false)),
         }
     }
 
     pub fn get_id(&self) -> RobotId {
         self.id
+    }
+
+    pub fn kick(&self) {
+        let mut should_kick = self.should_kick.lock().unwrap();
+        *should_kick = true;
+    }
+
+    // return the should_kick state & resets it back to false (similar to Option::take)
+    pub fn take_should_kick(&self) -> bool {
+        let mut should_kick = self.should_kick.lock().unwrap();
+        let ret = *should_kick;
+        *should_kick = false;
+        ret
     }
 
     pub fn enable_dribbler(&self) {
@@ -79,12 +94,12 @@ impl Robot {
         *self.target_angular_vel.lock().unwrap()
     }
 
-    fn set_target_vel(&self, target_vel: Vec2) {
+    pub fn set_target_vel(&self, target_vel: Vec2) {
         let mut self_target_vel = self.target_vel.lock().unwrap();
         *self_target_vel = target_vel;
     }
 
-    fn set_target_angular_vel(&self, target_angular_vel: f32) {
+    pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
         let mut self_target_angular_vel = self.target_angular_vel.lock().unwrap();
         *self_target_angular_vel = target_angular_vel;
     }

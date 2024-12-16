@@ -1,4 +1,6 @@
+#[allow(async_fn_in_trait)]
 pub mod actions;
+pub mod controllers;
 pub mod league_protocols;
 pub mod math;
 pub mod net;

@@ -8,6 +8,7 @@ pub struct UdpTransceiver {
     buffer: [u8; BUFFER_SIZE],
 }
 
+#[derive(Debug)]
 pub enum UdpTransceiverCreationError {
     SocketBindError(io::Error),
     SocketConnectError(io::Error),
