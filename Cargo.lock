@@ -201,6 +201,7 @@ dependencies = [
  "prost-types",
  "rand",
  "rrt",
+ "socket2",
  "tokio",
 ]
 

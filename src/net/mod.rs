@@ -2,3 +2,5 @@
 
 pub mod multicast_receiver;
 pub mod multicast_sender;
+
+const BUFFER_SIZE: usize = 1024;
