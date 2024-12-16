@@ -1,5 +1,4 @@
-use super::BUFFER_SIZE;
-use prost::DecodeError;
+use super::{ReceiveError, BUFFER_SIZE};
 use socket2::{Domain, Protocol, Socket, Type};
 use std::io::{self, Cursor};
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket as StdUdpSocket};
@@ -11,23 +10,17 @@ pub struct MulticastUdpReceiver {
 }
 
 #[derive(Debug)]
-pub enum CreationError {
+pub enum MulticastUdpReceiverCreationError {
     SocketCreationError(io::Error),
     SocketReuseAddressError(io::Error),
     SocketNonblockingError(io::Error),
     SocketBindError(io::Error),
     SocketJoinMulticastError(io::Error),
 }
-use CreationError::*; // for readability in `MulticastUdpReceiver::new`
-
-#[derive(Debug)]
-pub enum ReceiveError {
-    SocketReceiveError(io::Error),
-    DecodeError(DecodeError),
-}
+use MulticastUdpReceiverCreationError::*; // for readability in `MulticastUdpReceiver::new`
 
 impl MulticastUdpReceiver {
-    pub fn new(ip: Ipv4Addr, port: u16) -> Result<Self, CreationError> {
+    pub fn new(ip: Ipv4Addr, port: u16) -> Result<Self, MulticastUdpReceiverCreationError> {
         let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))
             .map_err(SocketCreationError)?;
         socket
