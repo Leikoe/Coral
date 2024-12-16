@@ -4,6 +4,7 @@ pub mod controllers;
 pub mod league_protocols;
 pub mod math;
 pub mod net;
+pub mod vision;
 pub mod world;
 
 use std::time::Duration;

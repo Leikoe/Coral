@@ -1,5 +1,7 @@
 use crabe_async::{
+    controllers::RobotController,
     math::{Point2, Vec2},
+    vision::Vision,
     world::{Ball, Robot, RobotId, World},
     CONTROL_PERIOD,
 };
@@ -34,14 +36,18 @@ fn take_next_commands(robots: &mut HashMap<RobotId, Robot>) -> HashMap<RobotId, 
         .collect()
 }
 
-fn launch_control_thread(mut world: World) -> JoinHandle<()> {
-    let vision = ();
-
+fn launch_control_thread<T, E>(
+    mut world: World,
+    controller: impl RobotController<T, E>,
+) -> JoinHandle<()> {
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     tokio::spawn(async move {
+        // let vision = Vision::new();
+
         // Robot control loop, 1Hz
         loop {
             interval.tick().await; // first tick ticks immediately that's why it's at the beginning
+                                   // let vision_packets = vision.get_pending_packets().await;
 
             // println!("[DEBUG] world state");
             // println!("\tball pos: {:?}", world.ball.get_pos());
