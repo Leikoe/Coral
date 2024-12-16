@@ -1,4 +1,4 @@
-use super::point::Point2;
+use super::Point2;
 use rand::distributions::{Distribution, Uniform};
 
 #[derive(Debug, Clone, Copy)]

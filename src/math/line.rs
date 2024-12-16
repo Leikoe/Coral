@@ -1,6 +1,5 @@
-use std::ops::{Add, Sub};
-
 use super::{Point2, Vec2};
+use std::ops::{Add, Sub};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Line {

@@ -1,5 +1,9 @@
 use crate::{
-    angle_difference, trackable::Trackable, Point2, Rect, RobotCommand, Vec2, World, CONTROL_PERIOD,
+    angle_difference,
+    math::{Point2, Rect, Vec2},
+    world::Trackable,
+    world::World,
+    CONTROL_PERIOD,
 };
 use std::sync::{Arc, Mutex};
 
@@ -155,15 +159,6 @@ impl Robot {
             followed_path.push(self.get_pos());
         }
         Ok(followed_path)
-    }
-
-    pub fn make_command(&self) -> RobotCommand {
-        RobotCommand {
-            vel: self.get_target_vel(),
-            angular_vel: self.get_target_angular_vel(),
-            kick: false,
-            dribble: self.should_dribble(),
-        }
     }
 
     // what can you wait for a robot to do ?

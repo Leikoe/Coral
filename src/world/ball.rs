@@ -1,4 +1,7 @@
-use crate::{trackable::Trackable, Point2, Vec2};
+use crate::{
+    math::{Point2, Vec2},
+    world::Trackable,
+};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]

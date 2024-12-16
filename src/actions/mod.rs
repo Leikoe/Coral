@@ -1,4 +1,7 @@
-use crate::{trackable::Trackable, Ball, Line, Point2, Robot, World};
+use crate::{
+    math::{Line, Point2},
+    world::{Ball, Robot, Trackable, World},
+};
 use tokio::join;
 
 pub async fn do_square(robot: &Robot) {

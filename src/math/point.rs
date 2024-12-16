@@ -1,5 +1,5 @@
-use super::vec::Vec2;
-use crate::trackable::Trackable;
+use super::Vec2;
+use crate::world::Trackable;
 use std::ops::{Add, AddAssign, DivAssign, MulAssign, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
