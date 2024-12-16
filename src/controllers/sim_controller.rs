@@ -1,10 +1,11 @@
-use std::net::Ipv4Addr;
+use std::{future::Future, net::Ipv4Addr};
 
 use crate::{
     league_protocols::simulation_packet::{
         robot_move_command, MoveLocalVelocity, RobotCommand, RobotControl, RobotMoveCommand,
     },
     net::{udp_transceiver::UdpTransceiver, SendError},
+    world::{Robot, TeamColor},
 };
 
 use super::RobotController;
@@ -13,16 +14,11 @@ pub struct SimRobotController {
     socket: UdpTransceiver,
 }
 
-pub enum SimulationColor {
-    Blue,
-    Yellow,
-}
-
 impl SimRobotController {
-    pub async fn new(color: SimulationColor) -> Self {
+    pub async fn new(color: TeamColor) -> Self {
         let port: u16 = match color {
-            SimulationColor::Blue => 10301,
-            SimulationColor::Yellow => 10302,
+            TeamColor::Blue => 10301,
+            TeamColor::Yellow => 10302,
         };
         Self {
             socket: UdpTransceiver::new(Ipv4Addr::LOCALHOST, port)
@@ -32,11 +28,20 @@ impl SimRobotController {
     }
 }
 
+// impl RobotController<usize, SendError> for SimRobotController {
+//     fn send_proper_command_for<'a>(
+//         &mut self,
+//         robots: impl Iterator<Item = &'a Robot>,
+//     ) -> impl Future<Output = Result<usize, SendError>> + Send {
+//         todo!()
+//     }
+// }
+
 impl RobotController<usize, SendError> for SimRobotController {
-    async fn send_proper_command_for(
+    fn send_proper_command_for(
         &mut self,
-        robots: impl Iterator<Item = crate::world::Robot>,
-    ) -> Result<usize, SendError> {
+        robots: impl Iterator<Item = Robot>,
+    ) -> impl Future<Output = Result<usize, SendError>> + Send {
         let mut packet = RobotControl::default();
 
         for robot in robots {
@@ -77,6 +82,6 @@ impl RobotController<usize, SendError> for SimRobotController {
             };
             packet.robot_commands.push(robot_command);
         }
-        self.socket.send(packet).await
+        self.socket.send(packet)
     }
 }

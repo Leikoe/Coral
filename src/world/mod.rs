@@ -10,6 +10,12 @@ pub use trackable::Trackable;
 use crate::math::Rect;
 use std::collections::HashMap;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TeamColor {
+    Blue,
+    Yellow,
+}
+
 #[derive(Clone)]
 pub struct World {
     pub field: Rect,

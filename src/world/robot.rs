@@ -132,6 +132,16 @@ impl Robot {
         *orientation = angle;
     }
 
+    pub fn set_pos(&mut self, pos: Point2) {
+        let mut _pos = self.pos.lock().unwrap();
+        *_pos = pos;
+    }
+
+    pub fn set_orientation(&mut self, orientation: f32) {
+        let mut _orientation = self.orientation.lock().unwrap();
+        *_orientation = orientation;
+    }
+
     pub async fn goto_rrt<T: Trackable>(
         &self,
         world: &World,
