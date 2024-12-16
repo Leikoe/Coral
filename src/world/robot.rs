@@ -7,8 +7,11 @@ use crate::{
 use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
-const IS_CLOSE_EPSILON: f32 = 0.01;
+const IS_CLOSE_EPSILON: f32 = 0.05;
 const RRT_MAX_TRIES: usize = 1_000;
+
+const GOTO_SPEED: f32 = 1.5;
+const GOTO_ANGULAR_SPEED: f32 = 1.5;
 
 #[derive(Clone)]
 pub struct Robot {
@@ -124,10 +127,10 @@ impl Robot {
                 .map(|x| angle_difference(x as f64, self_orientation as f64) as f32)
                 .unwrap_or_default();
             self.set_target_vel(Vec2::new(
-                robot_to_rest_robot_pov.x / 10.,
-                robot_to_rest_robot_pov.y / 10.,
+                robot_to_rest_robot_pov.x * GOTO_SPEED,
+                robot_to_rest_robot_pov.y * GOTO_SPEED,
             ));
-            self.set_target_angular_vel(angle_diff / 10.);
+            self.set_target_angular_vel(angle_diff * GOTO_ANGULAR_SPEED);
 
             // next iter starts here
             interval.tick().await;

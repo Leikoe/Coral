@@ -174,9 +174,9 @@ async fn main() {
     // do a square
     // r0.set_target_vel(Vec2::new(0.5, 0.));
     // sleep(Duration::from_secs(1)).await;
-    // do_square(r0).await;
+    do_square(r0).await;
 
-    r0.goto(&Point2::zero(), None).await;
+    // r0.goto(&Point2::zero(), None).await;
 
     // // do a "three_attackers_attack" and simulate a penalty after 2s to early stop
     // let _ = tokio::time::timeout(
