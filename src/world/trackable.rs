@@ -1,4 +1,4 @@
-use crate::{Point2, Vec2};
+use crate::math::{Point2, Vec2};
 
 pub trait Trackable {
     fn get_pos(&self) -> Point2;

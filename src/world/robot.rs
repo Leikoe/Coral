@@ -1,6 +1,5 @@
 use crate::{
-    angle_difference,
-    math::{Point2, Rect, Vec2},
+    math::{angle_difference, Point2, Rect, Vec2},
     world::Trackable,
     world::World,
     CONTROL_PERIOD,
