@@ -1,4 +1,6 @@
-use std::{future::Future, net::Ipv4Addr};
+use std::{future::Future, net::Ipv4Addr, time::Duration};
+
+use tokio::{runtime::Handle, time::sleep};
 
 use crate::{
     league_protocols::simulation_packet::{
@@ -28,15 +30,6 @@ impl SimRobotController {
     }
 }
 
-// impl RobotController<usize, SendError> for SimRobotController {
-//     fn send_proper_command_for<'a>(
-//         &mut self,
-//         robots: impl Iterator<Item = &'a Robot>,
-//     ) -> impl Future<Output = Result<usize, SendError>> + Send {
-//         todo!()
-//     }
-// }
-
 impl RobotController<usize, SendError> for SimRobotController {
     fn send_proper_command_for(
         &mut self,
@@ -52,9 +45,9 @@ impl RobotController<usize, SendError> for SimRobotController {
             // };
 
             let (kick_speed, kick_angle) = if robot.take_should_kick() {
-                (1., 0.0)
+                (Some(1.), Some(0.0))
             } else {
-                (0.0, 0.0)
+                (None, None)
             };
 
             let target_vel = robot.get_target_vel();
@@ -76,12 +69,37 @@ impl RobotController<usize, SendError> for SimRobotController {
                         },
                     )),
                 }),
-                kick_speed: Some(kick_speed),
-                kick_angle: Some(kick_angle),
+                kick_speed,
+                kick_angle,
                 dribbler_speed,
             };
             packet.robot_commands.push(robot_command);
         }
         self.socket.send(packet)
+    }
+
+    // workaround for async Drop, to be replaced when std::future::AsyncDrop is stabilized
+    async fn close(self) -> Result<(), SendError> {
+        let mut packet = RobotControl::default();
+        for rid in 0..1 {
+            packet.robot_commands.push(RobotCommand {
+                id: rid,
+                move_command: Some(RobotMoveCommand {
+                    command: Some(robot_move_command::Command::LocalVelocity(
+                        MoveLocalVelocity {
+                            forward: 0.,
+                            left: 0.,
+                            angular: 0.,
+                        },
+                    )),
+                }),
+                kick_speed: None,
+                kick_angle: None,
+                dribbler_speed: None,
+            });
+        }
+
+        sleep(Duration::from_millis(50)).await;
+        self.socket.send(packet).await.map(|_| ())
     }
 }

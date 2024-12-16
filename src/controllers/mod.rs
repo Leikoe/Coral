@@ -12,4 +12,6 @@ where
         &mut self,
         robots: impl Iterator<Item = Robot>,
     ) -> impl std::future::Future<Output = Result<R, E>> + Send;
+
+    fn close(self) -> impl std::future::Future<Output = Result<(), E>> + Send;
 }

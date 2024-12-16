@@ -104,16 +104,29 @@ impl Robot {
         *self_target_angular_vel = target_angular_vel;
     }
 
+    // destination is in world space
     pub async fn goto<T: Trackable>(&self, destination: &T, angle: Option<f32>) {
         let mut cur_pos = self.get_pos();
         let mut to_pos = destination.get_pos() - cur_pos;
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         while to_pos.norm() > IS_CLOSE_EPSILON {
+            let self_orientation = self.get_orientation();
+            let inverse_orientation = -self_orientation;
+            let robot_to_rest_robot_pov = Point2::new(
+                to_pos.x * inverse_orientation.cos() - to_pos.y * inverse_orientation.sin(),
+                to_pos.y * inverse_orientation.cos() + to_pos.x * inverse_orientation.sin(),
+            );
+
+            dbg!(robot_to_rest_robot_pov);
+
             let angle_diff = angle
-                .map(|x| angle_difference(x as f64, self.get_orientation() as f64) as f32)
+                .map(|x| angle_difference(x as f64, self_orientation as f64) as f32)
                 .unwrap_or_default();
-            self.set_target_vel(Vec2::new(to_pos.x / 10., to_pos.y / 10.));
+            self.set_target_vel(Vec2::new(
+                robot_to_rest_robot_pov.x / 10.,
+                robot_to_rest_robot_pov.y / 10.,
+            ));
             self.set_target_angular_vel(angle_diff / 10.);
 
             // next iter starts here
