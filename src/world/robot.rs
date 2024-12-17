@@ -13,11 +13,22 @@ const RRT_MAX_TRIES: usize = 10_000;
 const GOTO_SPEED: f32 = 1.5;
 const GOTO_ANGULAR_SPEED: f32 = 1.5;
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AvoidanceMode {
+    /// can collide with everything
+    None,
+    /// can collide with ball, can't collide with robots
+    AvoidRobots,
+    /// can't collide
+    AvoidRobotsAndBall,
+}
+
 #[derive(Clone)]
 pub struct Robot {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
     orientation: Arc<Mutex<f32>>,
+    has_ball: Arc<Mutex<bool>>,
     // control stuff
     target_vel: Arc<Mutex<Vec2>>,
     target_angular_vel: Arc<Mutex<f32>>,
@@ -37,6 +48,7 @@ impl Robot {
             id,
             pos: Arc::new(Mutex::new(pos)),
             orientation: Arc::new(Mutex::new(orientation)),
+            has_ball: Arc::new(Mutex::new(false)),
             target_vel: Arc::new(Mutex::new(Vec2::zero())),
             target_angular_vel: Arc::new(Mutex::new(0.)),
             should_dribble: Arc::new(Mutex::new(false)),
@@ -59,6 +71,15 @@ impl Robot {
         let ret = *should_kick;
         *should_kick = false;
         ret
+    }
+
+    pub fn has_ball(&self) -> bool {
+        *self.has_ball.lock().unwrap()
+    }
+
+    pub fn set_has_ball(&mut self, has_ball: bool) {
+        let mut _has_ball = self.has_ball.lock().unwrap();
+        *_has_ball = has_ball;
     }
 
     pub fn enable_dribbler(&self) {
@@ -108,8 +129,9 @@ impl Robot {
     }
 
     // destination is in world space
-    pub async fn goto<T: Trackable>(&self, destination: &T, angle: Option<f32>) {
+    pub async fn goto<T: Trackable>(&self, destination: &T, angle: Option<f32>) -> Vec<Point2> {
         let mut cur_pos = self.get_pos();
+        let mut followed_path = vec![cur_pos];
         let mut to_pos = destination.get_pos() - cur_pos;
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
@@ -134,7 +156,9 @@ impl Robot {
             interval.tick().await;
             cur_pos = self.get_pos(); // compute diff
             to_pos = destination.get_pos() - cur_pos;
+            followed_path.push(cur_pos);
         }
+        followed_path
     }
 
     pub fn debug_tp<T: Trackable>(&self, destination: &T, angle: Option<f32>) {
@@ -156,22 +180,36 @@ impl Robot {
         *_orientation = orientation;
     }
 
+    fn is_free(&self, p: Point2, world: &Arc<Mutex<World>>, avoidance_mode: AvoidanceMode) -> bool {
+        if let AvoidanceMode::None = avoidance_mode {
+            return true;
+        }
+
+        let is_colliding_with_robot = !world
+            .lock()
+            .unwrap()
+            .team
+            .values()
+            .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
+            .any(|r| p.distance_to(r) < 0.3); // a robot is 10cm radius => 0.3 leaves 10cm between robots
+        if let AvoidanceMode::AvoidRobots = avoidance_mode {
+            return is_colliding_with_robot;
+        }
+
+        return is_colliding_with_robot && !(p.distance_to(&world.lock().unwrap().ball) < 0.1);
+    }
+
     pub async fn goto_rrt<T: Trackable>(
         &self,
         world: &Arc<Mutex<World>>,
         destination: &T,
         angle: Option<f32>,
+        avoidance_mode: AvoidanceMode,
     ) -> Result<Vec<Point2>, String> {
-        let is_free = |p: &[f32]| {
-            let p = Point2::from_vec(p);
-            !world
-                .lock()
-                .unwrap()
-                .team
-                .values()
-                .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
-                .any(|r| p.distance_to(r) < 0.3) // a robot is 10cm radius => 0.3 leaves 10cm between robots
-        };
+        // fallback to Robot::goto
+        if let AvoidanceMode::None = avoidance_mode {
+            return Ok(self.goto(destination, angle).await);
+        }
 
         let mut followed_path = vec![self.get_pos()];
         while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON {
@@ -184,18 +222,23 @@ impl Robot {
             let mut path = rrt::dual_rrt_connect(
                 &[start.x, start.y],
                 &[goal.x, goal.y],
-                is_free,
+                |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
                 || rect.sample_inside().to_vec(),
                 0.1,
                 RRT_MAX_TRIES,
             )?;
-            rrt::smooth_path(&mut path, is_free, 0.05, 100);
+            rrt::smooth_path(
+                &mut path,
+                |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
+                0.05,
+                100,
+            );
             let next_point = path
                 .into_iter()
                 .nth(1)
                 .ok_or(format!("Couldn't find a path to {:?}", goal))?;
             println!(
-                "[DEBUG - robot {} - goto_rrt] took {}ms to compute path",
+                "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
                 self.get_id(),
                 start_time.elapsed().as_millis()
             );

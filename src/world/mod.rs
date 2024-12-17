@@ -4,7 +4,7 @@ mod trackable;
 
 // EXPORTS
 pub use ball::Ball;
-pub use robot::{Robot, RobotId};
+pub use robot::{AvoidanceMode, Robot, RobotId};
 pub use trackable::Trackable;
 
 use crate::math::Rect;

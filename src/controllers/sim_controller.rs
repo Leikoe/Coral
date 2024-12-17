@@ -73,6 +73,9 @@ impl RobotController<usize, SendError> for SimRobotController {
                 kick_angle,
                 dribbler_speed,
             };
+            if robot.get_id() == 0 {
+                dbg!(&robot_command);
+            }
             packet.robot_commands.push(robot_command);
         }
         self.socket.send(packet)

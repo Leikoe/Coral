@@ -4,7 +4,7 @@ use crabe_async::{
     league_protocols::vision_packet::SslWrapperPacket,
     math::{Point2, Rect, Vec2},
     vision::Vision,
-    world::{Ball, Robot, TeamColor, Trackable, World},
+    world::{AvoidanceMode, Ball, Robot, TeamColor, Trackable, World},
     CONTROL_PERIOD,
 };
 use plotters::{
@@ -39,8 +39,16 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
         let pending_packets_iterator = vision.take_pending_packets().await;
         {
             let mut w = world.lock().unwrap();
+            let ball = w.ball.clone();
             for packet in pending_packets_iterator {
                 if let Some(detection) = packet.detection {
+                    if let Some(ball_detection) = detection.balls.get(0) {
+                        ball.set_pos(Point2::new(
+                            ball_detection.x / 1000.,
+                            ball_detection.y / 1000.,
+                        ));
+                    }
+
                     // TODO: handle ennemies
                     let (allies, _ennemies) = match side {
                         TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
@@ -51,18 +59,18 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         let detected_pos =
                             Point2::new(ally_detection.x / 1000., ally_detection.y / 1000.);
                         let detected_orientation = ally_detection.orientation();
-                        if let Some(r) = w.team.get_mut(&rid) {
-                            r.set_orientation(detected_orientation);
-                            r.set_pos(detected_pos);
-                        } else {
+                        if w.team.get_mut(&rid).is_none() {
                             println!("[DEBUG] ally {} was added to team!", rid);
                             let r = Robot::new(rid, detected_pos, detected_orientation);
                             w.team.insert(rid, r);
                         }
-                    }
-                    if let Some(ball_detection) = detection.balls.get(0) {
-                        w.ball
-                            .set_pos(Point2::new(ball_detection.x, ball_detection.y));
+                        // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                        let r = w.team.get_mut(&rid).unwrap();
+                        r.set_orientation(detected_orientation);
+                        r.set_pos(detected_pos);
+                        let r_to_ball = r.to(&ball);
+                        let has_ball = r_to_ball.angle().abs() < 20. && r_to_ball.norm() < 0.02;
+                        r.set_has_ball(has_ball);
                     }
                 }
 
@@ -164,7 +172,7 @@ async fn main() {
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
-    sleep(CONTROL_PERIOD + Duration::from_millis(10)).await; // AWAIT ROBOTS DETECTION
+    sleep(CONTROL_PERIOD * 2).await; // AWAIT ROBOTS DETECTION
 
     // robot aliases
     // let (r0, r1, r2) = (
@@ -174,16 +182,22 @@ async fn main() {
     // );
 
     let r0 = world.lock().unwrap().team.get(&0).unwrap().clone();
+    let ball = world.lock().unwrap().ball.clone();
+
+    // shoot(&world, &r0, &ball).await;
 
     // do a square
     // r0.set_target_vel(Vec2::new(1., 0.));
     // sleep(Duration::from_secs(1)).await;
-    let path = do_square_rrt(&world, &r0)
-        .await
-        .expect("couldn't find a path");
+    // let path = do_square_rrt(&world, &r0)
+    //     .await
+    //     .expect("couldn't find a path");
 
-    // let goal = Point2::new(-3., 0.);
-    // let path = r0.goto_rrt(&world, &goal, None).await.unwrap();
+    let goal = Point2::new(-3., 0.);
+    let path = r0
+        .goto_rrt(&world, &goal, None, AvoidanceMode::AvoidRobotsAndBall)
+        .await
+        .unwrap();
 
     {
         // PLOT
@@ -258,6 +272,7 @@ async fn main() {
 
     // sleep(Duration::from_secs(4)).await;
 
+    sleep(Duration::from_millis(100)).await;
     control_loop_thread_stop_notifier.notify_one(); // ask for stop
     control_loop_thread_handle
         .await
