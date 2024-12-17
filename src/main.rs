@@ -38,7 +38,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
         let mut pending_packets_count = 0;
         let pending_packets_iterator = vision.take_pending_packets().await;
         {
-            let w = world.lock().unwrap();
+            let mut w = world.lock().unwrap();
             for packet in pending_packets_iterator {
                 if let Some(detection) = packet.detection {
                     // TODO: handle ennemies
@@ -46,19 +46,20 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
                         TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
                     };
-                    // for ally_detection in allies {
-                    //     let rid = ally_detection.robot_id() as u8;
-                    //     let detected_pos =
-                    //         Point2::new(ally_detection.x / 1000., ally_detection.y / 1000.);
-                    //     let detected_orientation = ally_detection.orientation();
-                    //     if let Some(r) = world.lock().unwrap().team.get_mut(&rid) {
-                    //         r.set_orientation(detected_orientation);
-                    //         r.set_pos(detected_pos);
-                    //     } else {
-                    //         let r = Robot::new(rid, detected_pos, detected_orientation);
-                    //         world.lock().unwrap().team.insert(rid, r);
-                    //     }
-                    // }
+                    for ally_detection in allies {
+                        let rid = ally_detection.robot_id() as u8;
+                        let detected_pos =
+                            Point2::new(ally_detection.x / 1000., ally_detection.y / 1000.);
+                        let detected_orientation = ally_detection.orientation();
+                        if let Some(r) = w.team.get_mut(&rid) {
+                            r.set_orientation(detected_orientation);
+                            r.set_pos(detected_pos);
+                        } else {
+                            println!("[DEBUG] ally {} was added to team!", rid);
+                            let r = Robot::new(rid, detected_pos, detected_orientation);
+                            w.team.insert(rid, r);
+                        }
+                    }
                     if let Some(ball_detection) = detection.balls.get(0) {
                         w.ball
                             .set_pos(Point2::new(ball_detection.x, ball_detection.y));
@@ -74,19 +75,19 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
             pending_packets_count
         );
 
-        println!("[DEBUG] world state");
-        println!("\tball pos: {:?}", world.lock().unwrap().ball.get_pos());
-        for r in world.lock().unwrap().team.values() {
-            println!(
-                "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
-                r.get_id(),
-                r.should_dribble(),
-                r.get_pos(),
-                r.get_orientation()
-            );
-        }
+        // println!("[DEBUG] world state");
+        // println!("\tball pos: {:?}", world.lock().unwrap().ball.get_pos());
+        // for r in world.lock().unwrap().team.values() {
+        //     println!(
+        //         "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
+        //         r.get_id(),
+        //         r.should_dribble(),
+        //         r.get_pos(),
+        //         r.get_orientation()
+        //     );
+        // }
 
-        println!("[DEBUG] sending commands!\n");
+        // println!("[DEBUG] sending commands!\n");
         // ugly hack, could have been a `impl Iterator<Item &Robot>` if I was better at rust :/
         let robots = world
             .lock()
@@ -160,6 +161,12 @@ async fn main() {
     //     .team
     //     .insert(2, Robot::new(2, Point2::new(0., -1.), 0.));
 
+    let color = TeamColor::Blue;
+    let controller = SimRobotController::new(color).await;
+    let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
+        launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
+    sleep(Duration::from_secs(1)).await; // AWAIT ROBOTS DETECTION
+
     // robot aliases
     // let (r0, r1, r2) = (
     //     world.team.get(&0).unwrap(),
@@ -168,11 +175,6 @@ async fn main() {
     // );
 
     // let r0 = world.lock().unwrap().team.get(&0).unwrap().clone();
-
-    let color = TeamColor::Blue;
-    let controller = SimRobotController::new(color).await;
-    let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
-        launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
 
     // do a square
     // r0.set_target_vel(Vec2::new(0.5, 0.));
