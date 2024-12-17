@@ -145,7 +145,7 @@ fn make_ball_spin(ball: Ball, timeout: Option<Duration>) -> JoinHandle<()> {
 async fn main() {
     let world = Arc::new(Mutex::new(World {
         // TODO: don't assume field dims
-        field: Rect::new(Point2::new(-3.5, 1.75), Point2::new(3.5, -1.75)),
+        field: Rect::new(Point2::new(-4.5, 3.), Point2::new(4.5, -3.)),
         ball: Ball::new(Point2::new(-0.6, -0.2), Vec2::new(0.4, 0.4)),
         team: HashMap::new(),
     }));
@@ -196,7 +196,7 @@ async fn main() {
             .set_label_area_size(LabelAreaPosition::Left, 40)
             .set_label_area_size(LabelAreaPosition::Bottom, 40)
             .caption("Evitement", ("sans-serif", 40))
-            .build_cartesian_2d(-40..40, -17..17)
+            .build_cartesian_2d(-45..45, -30..30)
             .unwrap();
 
         ctx.configure_mesh().draw().unwrap();
