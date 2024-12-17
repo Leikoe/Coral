@@ -71,12 +71,13 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         .abs()
                             < 20.)
                             && (r_to_ball.norm() < 0.11); // TODO: stop the magic
-                        if rid == 0 {
-                            dbg!(r_to_ball.angle());
-                            dbg!(r.get_orientation());
-                            dbg!(r_to_ball.norm());
-                            dbg!(has_ball);
-                        }
+
+                        // if rid == 0 {
+                        //     dbg!(r_to_ball.angle());
+                        //     dbg!(r.get_orientation());
+                        //     dbg!(r_to_ball.norm());
+                        //     dbg!(has_ball);
+                        // }
                         r.set_has_ball(has_ball);
                     }
                 }

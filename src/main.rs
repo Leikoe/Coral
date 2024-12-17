@@ -1,4 +1,5 @@
 use crabe_async::{
+    actions::shoot,
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
     math::{Point2, Rect, Vec2},
@@ -48,33 +49,8 @@ async fn main() {
     //     .expect("couldn't find a path");
 
     let ennemy_goal = Point2::new(4.5, 0.);
-    let behind_ball = ball.minus(&ball.to(&ennemy_goal).mul(0.1));
-    let _ = r0
-        .goto_rrt(
-            &world,
-            &behind_ball,
-            Some(ball.to(&ennemy_goal).angle()),
-            AvoidanceMode::AvoidRobotsAndBall,
-        )
-        .await
-        .unwrap();
-    select! {
-        _ = r0
-            .goto_rrt(
-                &world,
-                &ball,
-                Some(ball.to(&ennemy_goal).angle()),
-                AvoidanceMode::AvoidRobots,
-            ) => {}
-        _ = async {
-            while !r0.has_ball() {
-                dbg!(r0.has_ball());
-                sleep(CONTROL_PERIOD).await
-            }
-        } => {}
-    };
-    while r0.has_ball() {
-        r0.kick();
+    for _ in 0..10 {
+        shoot(&world, &r0, &ball, &ennemy_goal).await;
     }
 
     // {

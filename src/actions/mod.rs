@@ -1,11 +1,43 @@
-// use std::sync::{Arc, Mutex};
+use std::{
+    ops::Mul,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
-// use crate::{
-//     math::{Line, Point2, Vec2},
-//     world::{AvoidanceMode, Ball, Robot, Trackable, World},
-//     CONTROL_PERIOD,
-// };
-// use tokio::{join, time::sleep};
+use crate::{
+    math::{Line, Point2, Vec2},
+    world::{AvoidanceMode, Ball, Robot, Trackable, World},
+    CONTROL_PERIOD,
+};
+use tokio::{join, select, time::sleep};
+
+pub async fn shoot<T: Trackable>(world: &Arc<Mutex<World>>, robot: &Robot, ball: &Ball, goal: &T) {
+    let behind_ball = ball.minus(&ball.to(goal).normalized().mul(0.3));
+    let _ = robot
+        .goto_rrt(
+            world,
+            &behind_ball,
+            Some(ball.to(goal).angle()),
+            AvoidanceMode::AvoidRobotsAndBall,
+        )
+        .await
+        .unwrap(); // will fail if we are against the ball
+    select! {
+        _ = robot
+            .goto_rrt(
+                world,
+                ball,
+                Some(ball.to(goal).angle()),
+                AvoidanceMode::AvoidRobots,
+            ) => {}
+        _ = robot.wait_until_has_ball() => {}
+    };
+    let mut interval = tokio::time::interval(Duration::from_secs(1));
+    while robot.has_ball() {
+        interval.tick().await;
+        robot.kick();
+    }
+}
 
 // pub async fn do_square(robot: &Robot) {
 //     robot.goto(&Point2::new(0., 1.), None).await;

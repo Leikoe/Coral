@@ -196,8 +196,8 @@ impl Robot {
             return !is_colliding_with_robot;
         }
 
-        let is_colliding_with_ball = p.distance_to(&world.lock().unwrap().ball) < 0.13;
-        return !is_colliding_with_robot && !is_colliding_with_ball;
+        let is_colliding_with_ball = p.distance_to(&world.lock().unwrap().ball) < 0.2;
+        return !dbg!(is_colliding_with_robot) && !dbg!(is_colliding_with_ball);
     }
 
     pub async fn goto_rrt<T: Trackable>(
@@ -210,6 +210,10 @@ impl Robot {
         // fallback to Robot::goto
         if let AvoidanceMode::None = avoidance_mode {
             return Ok(self.goto(destination, angle).await);
+        }
+
+        if !self.is_free(self.get_pos(), world, avoidance_mode) {
+            return Err("we are in a position which isn't free".to_string());
         }
 
         let is_angle_right = || match angle {
@@ -255,6 +259,13 @@ impl Robot {
             followed_path.push(self.get_pos());
         }
         Ok(followed_path)
+    }
+
+    pub async fn wait_until_has_ball(&self) {
+        let mut interval = tokio::time::interval(CONTROL_PERIOD);
+        while !self.has_ball() {
+            interval.tick().await;
+        }
     }
 
     // what can you wait for a robot to do ?
