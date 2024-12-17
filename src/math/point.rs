@@ -60,6 +60,28 @@ impl Sub<Vec2> for Point2 {
     }
 }
 
+impl Add<&Vec2> for Point2 {
+    type Output = Point2;
+
+    fn add(self, rhs: &Vec2) -> Self::Output {
+        Point2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Sub<&Vec2> for Point2 {
+    type Output = Point2;
+
+    fn sub(self, rhs: &Vec2) -> Self::Output {
+        Point2 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
 impl Trackable for Point2 {
     fn get_pos(&self) -> Point2 {
         *self
@@ -91,5 +113,11 @@ impl DivAssign<f32> for Point2 {
     fn div_assign(&mut self, rhs: f32) {
         self.x /= rhs;
         self.y /= rhs;
+    }
+}
+
+impl AsRef<Point2> for Point2 {
+    fn as_ref(&self) -> &Point2 {
+        self
     }
 }

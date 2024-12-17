@@ -196,7 +196,7 @@ impl Robot {
             return !is_colliding_with_robot;
         }
 
-        let is_colliding_with_ball = p.distance_to(&world.lock().unwrap().ball) < 0.2;
+        let is_colliding_with_ball = p.distance_to(&world.lock().unwrap().ball) < 0.13;
         return !is_colliding_with_robot && !is_colliding_with_ball;
     }
 
@@ -212,8 +212,15 @@ impl Robot {
             return Ok(self.goto(destination, angle).await);
         }
 
+        let is_angle_right = || match angle {
+            Some(angle) => angle_difference(angle as f64, self.get_orientation() as f64) < 10.,
+            None => true,
+        };
+
         let mut followed_path = vec![self.get_pos()];
-        while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON {
+        while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON
+            && is_angle_right()
+        {
             let start = self.get_pos();
             let goal = destination.get_pos();
             // let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));

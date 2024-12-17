@@ -14,7 +14,7 @@ use std::{
 };
 
 use controllers::RobotController;
-use math::Point2;
+use math::{angle_difference, Point2};
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
 use world::{Robot, TeamColor, Trackable, World};
@@ -64,7 +64,19 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         r.set_orientation(detected_orientation);
                         r.set_pos(detected_pos);
                         let r_to_ball = r.to(&ball);
-                        let has_ball = r_to_ball.angle().abs() < 20. && r_to_ball.norm() < 0.02;
+                        let has_ball = (angle_difference(
+                            r_to_ball.angle() as f64,
+                            r.get_orientation() as f64,
+                        )
+                        .abs()
+                            < 20.)
+                            && (r_to_ball.norm() < 0.11); // TODO: stop the magic
+                        if rid == 0 {
+                            dbg!(r_to_ball.angle());
+                            dbg!(r.get_orientation());
+                            dbg!(r_to_ball.norm());
+                            dbg!(has_ball);
+                        }
                         r.set_has_ball(has_ball);
                     }
                 }

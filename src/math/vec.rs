@@ -76,3 +76,9 @@ impl Mul<f32> for Vec2 {
         }
     }
 }
+
+impl AsRef<Vec2> for Vec2 {
+    fn as_ref(&self) -> &Vec2 {
+        self
+    }
+}

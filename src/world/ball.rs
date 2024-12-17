@@ -34,3 +34,9 @@ impl Trackable for Ball {
         *self.pos.lock().unwrap()
     }
 }
+
+impl AsRef<Ball> for Ball {
+    fn as_ref(&self) -> &Ball {
+        self
+    }
+}
