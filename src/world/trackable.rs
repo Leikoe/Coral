@@ -1,29 +1,28 @@
 use crate::math::{Point2, Vec2};
 
+pub struct Transform;
+
+impl Transform {
+    pub fn apply<O: Trackable, NO: Trackable>(&self, o: O) -> NO {
+        unimplemented!()
+    }
+}
+
 // could maybe be replaced by a Transform trait ?
-pub struct Offsetted<'base, T: Trackable> {
-    base: &'base T,
-    transform: Vec2,
+pub struct ReactivePoint<'base, 'transform, B: Trackable> {
+    base: &'base B,
+    transform: &'transform Transform,
 }
 
-impl<'base, T: Trackable> Offsetted<'base, T> {
-    fn new<U: AsRef<Vec2>>(base: &'base T, transform: U) -> Self {
-        Self {
-            base,
-            transform: *transform.as_ref(),
-        }
+impl<'base, 'transform, B: Trackable> ReactivePoint<'base, 'transform, B> {
+    pub fn new(base: &'base B, transform: &'transform Transform) -> Self {
+        Self { base, transform }
     }
 }
 
-impl<'base, T: Trackable> Trackable for Offsetted<'base, T> {
+impl<'base, 'transform, B: Trackable> Trackable for ReactivePoint<'base, 'transform, B> {
     fn get_pos(&self) -> Point2 {
-        self.base.get_pos() + self.transform
-    }
-}
-
-impl<'base, T: Trackable> AsRef<Offsetted<'base, T>> for Offsetted<'base, T> {
-    fn as_ref(&self) -> &Offsetted<'base, T> {
-        self
+        self.base.get_pos()
     }
 }
 
@@ -37,12 +36,13 @@ pub trait Trackable: Sized {
         (rhs.get_pos() - self.get_pos()).norm()
     }
 
-    fn plus(&self, t: &Vec2) -> Offsetted<'_, Self> {
-        Offsetted::new(self, t)
+    fn plus<'transform>(&self, t: &'transform Transform) -> ReactivePoint<'_, 'transform, Self> {
+        ReactivePoint::new(self, t)
     }
 
-    fn minus(&self, t: &Vec2) -> Offsetted<'_, Self> {
-        Offsetted::new(self, *t * -1.0)
+    fn minus<'transform>(&self, t: &'transform Transform) -> ReactivePoint<'_, 'transform, Self> {
+        unimplemented!()
+        // ReactivePoint::new(self, *t * -1.0)
     }
 }
 
