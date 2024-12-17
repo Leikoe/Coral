@@ -17,8 +17,8 @@ pub async fn shoot<T: Trackable + Clone>(
     ball: &Ball,
     goal: &T,
 ) {
-    let ball_to_goal = ball.clone().to(goal.clone());
-    let ball_to_behind_ball = ball_to_goal.clone().normalized().mul(-0.3);
+    let ball_to_goal = ball.to(goal);
+    let ball_to_behind_ball = ball_to_goal.normalized().mul(-0.3);
 
     let behind_ball = ball.plus(ball_to_behind_ball);
     let _ = robot

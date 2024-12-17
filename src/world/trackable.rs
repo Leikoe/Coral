@@ -12,7 +12,7 @@ use crate::math::{Point2, Vec2};
 
 pub trait ReactiveVec2: Sized + Clone {
     fn get_vec(&self) -> Vec2;
-    fn normalized(self) -> impl ReactiveVec2 {
+    fn normalized(&self) -> impl ReactiveVec2 {
         move || self.get_vec().normalized()
     }
     fn add<T: ReactiveVec2>(self, rhs: T) -> impl ReactiveVec2 {
@@ -58,7 +58,9 @@ impl<'base, B: Trackable, T: ReactiveVec2 + Clone> Trackable for ReactivePoint<'
 pub trait Trackable: Sized + Clone {
     fn get_pos(&self) -> Point2;
 
-    fn to<T: Trackable>(self, rhs: T) -> impl ReactiveVec2 {
+    // this is bad practice but here it's for nice method chaining's sake
+
+    fn to<T: Trackable>(&self, rhs: &T) -> impl ReactiveVec2 {
         move || Point2::to(&self.get_pos(), rhs.get_pos())
     }
 
