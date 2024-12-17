@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
 const IS_CLOSE_EPSILON: f32 = 0.05;
-const RRT_MAX_TRIES: usize = 10_000;
+const RRT_MAX_TRIES: usize = 1_000;
 
 const GOTO_SPEED: f32 = 1.5;
 const GOTO_ANGULAR_SPEED: f32 = 1.5;
@@ -185,7 +185,7 @@ impl Robot {
             return true;
         }
 
-        let is_colliding_with_robot = !world
+        let is_colliding_with_robot = world
             .lock()
             .unwrap()
             .team
@@ -193,10 +193,11 @@ impl Robot {
             .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
             .any(|r| p.distance_to(r) < 0.3); // a robot is 10cm radius => 0.3 leaves 10cm between robots
         if let AvoidanceMode::AvoidRobots = avoidance_mode {
-            return is_colliding_with_robot;
+            return !is_colliding_with_robot;
         }
 
-        return is_colliding_with_robot && !(p.distance_to(&world.lock().unwrap().ball) < 0.1);
+        let is_colliding_with_ball = p.distance_to(&world.lock().unwrap().ball) < 0.2;
+        return !is_colliding_with_robot && !is_colliding_with_ball;
     }
 
     pub async fn goto_rrt<T: Trackable>(
