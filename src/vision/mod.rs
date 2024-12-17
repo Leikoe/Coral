@@ -32,7 +32,7 @@ impl Vision {
         }
     }
 
-    pub async fn get_pending_packets(&mut self) -> impl Iterator<Item = SslWrapperPacket> {
+    pub async fn take_pending_packets(&mut self) -> impl Iterator<Item = SslWrapperPacket> {
         let mut received = Vec::new();
         while let Ok(Ok(packet)) =
             tokio::time::timeout(RECEIVE_TIMEOUT, self.socket.receive::<SslWrapperPacket>()).await

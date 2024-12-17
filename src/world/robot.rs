@@ -160,7 +160,7 @@ impl Robot {
 
     pub async fn goto_rrt<T: Trackable>(
         &self,
-        world: &World,
+        world: &Arc<Mutex<World>>,
         destination: &T,
         angle: Option<f32>,
     ) -> Result<Vec<Point2>, String> {
@@ -177,10 +177,12 @@ impl Robot {
                 |p: &[f32]| {
                     let p = Point2::from_vec(p);
                     !world
+                        .lock()
+                        .unwrap()
                         .team
                         .values()
                         .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
-                        .any(|r| p.distance_to(r) < 0.3) // a robot is 10cm radius => 0.3 leaves 10cm between robots
+                        .any(|r| p.distance_to(r) < 0.4) // a robot is 10cm radius => 0.3 leaves 10cm between robots
                 },
                 || rect.sample_inside().to_vec(),
                 0.1,

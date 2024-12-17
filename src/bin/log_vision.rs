@@ -4,7 +4,7 @@ use crabe_async::vision::Vision;
 async fn main() {
     let mut vision = Vision::new("224.5.23.2", None, false);
     loop {
-        for packet in vision.get_pending_packets().await {
+        for packet in vision.take_pending_packets().await {
             dbg!(packet);
         }
     }

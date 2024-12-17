@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::{
     math::{Line, Point2},
     world::{Ball, Robot, Trackable, World},
@@ -12,7 +14,7 @@ pub async fn do_square(robot: &Robot) {
     println!("reached dest!");
 }
 
-pub async fn do_square_rrt(world: &World, robot: &Robot) -> Result<(), String> {
+pub async fn do_square_rrt(world: &Arc<Mutex<World>>, robot: &Robot) -> Result<(), String> {
     robot.goto_rrt(world, &Point2::new(0., 1.), None).await?;
     robot.goto_rrt(world, &Point2::new(1., 1.), None).await?;
     robot.goto_rrt(world, &Point2::new(1., 0.), None).await?;
