@@ -121,8 +121,6 @@ impl Robot {
                 to_pos.y * inverse_orientation.cos() + to_pos.x * inverse_orientation.sin(),
             );
 
-            dbg!(robot_to_rest_robot_pov);
-
             let angle_diff = angle
                 .map(|x| angle_difference(x as f64, self_orientation as f64) as f32)
                 .unwrap_or_default();

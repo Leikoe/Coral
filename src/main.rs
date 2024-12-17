@@ -11,7 +11,7 @@ use plotters::{
     chart::{ChartBuilder, LabelAreaPosition},
     prelude::{BitMapBackend, Circle, IntoDrawingArea},
     series::LineSeries,
-    style::{BLUE, RED, WHITE},
+    style::{full_palette::GREEN, Color, BLUE, RED, WHITE},
 };
 use std::{
     collections::HashMap,
@@ -180,10 +180,8 @@ async fn main() {
     // sleep(Duration::from_secs(1)).await;
     // do_square_rrt(&world, r0).await;
 
-    let path = r0
-        .goto_rrt(&world, &Point2::new(-3., 0.), None)
-        .await
-        .unwrap();
+    let goal = Point2::new(-3., 0.);
+    let path = r0.goto_rrt(&world, &goal, None).await.unwrap();
 
     {
         // PLOT
@@ -205,6 +203,21 @@ async fn main() {
             world.lock().unwrap().team.iter().map(|(id, r)| {
                 Circle::new((to_int(r.get_pos().x), to_int(r.get_pos().y)), 5, &BLUE)
             }),
+        )
+        .unwrap();
+
+        ctx.draw_series(
+            path.iter()
+                .map(|p| Circle::new((to_int(p.x), to_int(p.y)), 5, GREEN.filled()))
+                .take(1),
+        )
+        .unwrap();
+
+        ctx.draw_series(
+            vec![goal]
+                .iter()
+                .map(|p| Circle::new((to_int(p.x), to_int(p.y)), 5, RED.filled()))
+                .take(1),
         )
         .unwrap();
 
