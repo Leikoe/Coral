@@ -3,7 +3,7 @@ use crabe_async::{
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
     math::{Point2, Rect, Vec2},
-    world::{AvoidanceMode, Ball, TeamColor, Trackable, World},
+    world::{Ball, TeamColor, World},
     CONTROL_PERIOD,
 };
 use plotters::{
@@ -14,11 +14,10 @@ use plotters::{
 };
 use std::{
     collections::HashMap,
-    ops::Mul,
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tokio::{select, time::sleep};
+use tokio::time::sleep;
 
 /// Simulation of a real control loop
 #[tokio::main]

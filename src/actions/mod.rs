@@ -6,18 +6,26 @@ use std::{
 
 use crate::{
     math::{Line, Point2, Vec2},
-    world::{AvoidanceMode, Ball, Robot, Trackable, World},
+    world::{AvoidanceMode, Ball, ReactiveVec2, Robot, Trackable, World},
     CONTROL_PERIOD,
 };
 use tokio::{join, select, time::sleep};
 
-pub async fn shoot<T: Trackable>(world: &Arc<Mutex<World>>, robot: &Robot, ball: &Ball, goal: &T) {
-    let behind_ball = ball.minus(&ball.to(goal).normalized().mul(0.3));
+pub async fn shoot<T: Trackable + Clone>(
+    world: &Arc<Mutex<World>>,
+    robot: &Robot,
+    ball: &Ball,
+    goal: &T,
+) {
+    let ball_to_goal = ball.clone().to(goal.clone());
+    let ball_to_behind_ball = ball_to_goal.clone().normalized().mul(0.3);
+
+    let behind_ball = ball.plus(ball_to_behind_ball);
     let _ = robot
         .goto_rrt(
             world,
             &behind_ball,
-            Some(ball.to(goal).angle()),
+            Some(ball_to_goal.angle()),
             AvoidanceMode::AvoidRobotsAndBall,
         )
         .await
@@ -27,7 +35,7 @@ pub async fn shoot<T: Trackable>(world: &Arc<Mutex<World>>, robot: &Robot, ball:
             .goto_rrt(
                 world,
                 ball,
-                Some(ball.to(goal).angle()),
+                Some(ball_to_goal.angle()),
                 AvoidanceMode::AvoidRobots,
             ) => {}
         _ = robot.wait_until_has_ball() => {}

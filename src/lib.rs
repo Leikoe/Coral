@@ -17,7 +17,7 @@ use controllers::RobotController;
 use math::{angle_difference, Point2};
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
-use world::{Robot, TeamColor, Trackable, World};
+use world::{ReactiveVec2, Robot, TeamColor, Trackable, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
 
@@ -63,7 +63,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         let r = w.team.get_mut(&rid).unwrap();
                         r.set_orientation(detected_orientation);
                         r.set_pos(detected_pos);
-                        let r_to_ball = r.to(&ball);
+                        let r_to_ball = r.clone().to(ball.clone());
                         let has_ball = (angle_difference(
                             r_to_ball.angle() as f64,
                             r.get_orientation() as f64,
