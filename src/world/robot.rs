@@ -7,7 +7,7 @@ use crate::{
 use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
-const IS_CLOSE_EPSILON: f32 = 0.02;
+const IS_CLOSE_EPSILON: f32 = 0.05;
 const RRT_MAX_TRIES: usize = 10_000;
 
 const GOTO_SPEED: f32 = 1.5;
