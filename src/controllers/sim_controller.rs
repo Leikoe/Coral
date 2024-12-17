@@ -99,7 +99,6 @@ impl RobotController<usize, SendError> for SimRobotController {
             });
         }
 
-        sleep(Duration::from_millis(50)).await;
         self.socket.send(packet).await.map(|_| ())
     }
 }

@@ -123,7 +123,6 @@ fn launch_control_thread<T, E: Debug>(
             _ = notifier_clone.notified() => {}
         };
 
-        sleep(Duration::from_millis(100)).await;
         controller.close().await.expect("couldn't close controller");
     });
     (notifier, handle)
@@ -174,47 +173,47 @@ async fn main() {
     //     world.team.get(&2).unwrap(),
     // );
 
-    // let r0 = world.lock().unwrap().team.get(&0).unwrap().clone();
+    let r0 = world.lock().unwrap().team.get(&0).unwrap().clone();
 
     // do a square
     // r0.set_target_vel(Vec2::new(0.5, 0.));
     // sleep(Duration::from_secs(1)).await;
     // do_square_rrt(&world, r0).await;
 
-    // let path = r0
-    //     .goto_rrt(&world, &Point2::new(-3., 0.), None)
-    //     .await
-    //     .unwrap();
+    let path = r0
+        .goto_rrt(&world, &Point2::new(-3., 0.), None)
+        .await
+        .unwrap();
 
-    // {
-    //     // PLOT
-    //     let root_area = BitMapBackend::new("plot.png", (600, 400)).into_drawing_area();
-    //     root_area.fill(&WHITE).unwrap();
+    {
+        // PLOT
+        let root_area = BitMapBackend::new("plot.png", (600, 400)).into_drawing_area();
+        root_area.fill(&WHITE).unwrap();
 
-    //     let to_int = |f: f32| (f * 10.) as i32;
+        let to_int = |f: f32| (f * 10.) as i32;
 
-    //     let mut ctx = ChartBuilder::on(&root_area)
-    //         .set_label_area_size(LabelAreaPosition::Left, 40)
-    //         .set_label_area_size(LabelAreaPosition::Bottom, 40)
-    //         .caption("Evitement", ("sans-serif", 40))
-    //         .build_cartesian_2d(-40..40, -17..17)
-    //         .unwrap();
+        let mut ctx = ChartBuilder::on(&root_area)
+            .set_label_area_size(LabelAreaPosition::Left, 40)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .caption("Evitement", ("sans-serif", 40))
+            .build_cartesian_2d(-40..40, -17..17)
+            .unwrap();
 
-    //     ctx.configure_mesh().draw().unwrap();
+        ctx.configure_mesh().draw().unwrap();
 
-    //     ctx.draw_series(
-    //         world.lock().unwrap().team.iter().map(|(id, r)| {
-    //             Circle::new((to_int(r.get_pos().x), to_int(r.get_pos().y)), 5, &BLUE)
-    //         }),
-    //     )
-    //     .unwrap();
+        ctx.draw_series(
+            world.lock().unwrap().team.iter().map(|(id, r)| {
+                Circle::new((to_int(r.get_pos().x), to_int(r.get_pos().y)), 5, &BLUE)
+            }),
+        )
+        .unwrap();
 
-    //     ctx.draw_series(LineSeries::new(
-    //         path.iter().map(|p| (to_int(p.x), to_int(p.y))),
-    //         &RED,
-    //     ))
-    //     .unwrap();
-    // }
+        ctx.draw_series(LineSeries::new(
+            path.iter().map(|p| (to_int(p.x), to_int(p.y))),
+            &RED,
+        ))
+        .unwrap();
+    }
 
     // r0.goto(&Point2::zero(), None).await;
 
@@ -243,11 +242,10 @@ async fn main() {
     //     .unwrap();
 
     // sleep(Duration::from_secs(4)).await;
-    loop {}
 
     control_loop_thread_stop_notifier.notify_one(); // ask for stop
     control_loop_thread_handle
         .await
         .expect("failed to stop control loop thread!"); // wait done stopping
-    sleep(Duration::from_secs(1)).await;
+    sleep(Duration::from_millis(100)).await;
 }
