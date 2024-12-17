@@ -7,8 +7,8 @@ use crate::{
 use std::sync::{Arc, Mutex};
 
 pub type RobotId = u8;
-const IS_CLOSE_EPSILON: f32 = 0.05;
-const RRT_MAX_TRIES: usize = 1_000;
+const IS_CLOSE_EPSILON: f32 = 0.02;
+const RRT_MAX_TRIES: usize = 10_000;
 
 const GOTO_SPEED: f32 = 1.5;
 const GOTO_ANGULAR_SPEED: f32 = 1.5;
@@ -162,40 +162,45 @@ impl Robot {
         destination: &T,
         angle: Option<f32>,
     ) -> Result<Vec<Point2>, String> {
+        let is_free = |p: &[f32]| {
+            let p = Point2::from_vec(p);
+            !world
+                .lock()
+                .unwrap()
+                .team
+                .values()
+                .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
+                .any(|r| p.distance_to(r) < 0.3) // a robot is 10cm radius => 0.3 leaves 10cm between robots
+        };
+
         let mut followed_path = vec![self.get_pos()];
         while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON {
             let start = self.get_pos();
             let goal = destination.get_pos();
-            let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));
+            // let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));
+            let rect = world.lock().unwrap().field;
 
             let start_time = tokio::time::Instant::now();
-            let result = rrt::dual_rrt_connect(
+            let mut path = rrt::dual_rrt_connect(
                 &[start.x, start.y],
                 &[goal.x, goal.y],
-                |p: &[f32]| {
-                    let p = Point2::from_vec(p);
-                    !world
-                        .lock()
-                        .unwrap()
-                        .team
-                        .values()
-                        .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
-                        .any(|r| p.distance_to(r) < 0.4) // a robot is 10cm radius => 0.3 leaves 10cm between robots
-                },
+                is_free,
                 || rect.sample_inside().to_vec(),
                 0.1,
                 RRT_MAX_TRIES,
-            )?
-            .into_iter()
-            .nth(1)
-            .ok_or(format!("Couldn't find a path to {:?}", goal))?;
+            )?;
+            rrt::smooth_path(&mut path, is_free, 0.05, 100);
+            let next_point = path
+                .into_iter()
+                .nth(1)
+                .ok_or(format!("Couldn't find a path to {:?}", goal))?;
             println!(
                 "[DEBUG - robot {} - goto_rrt] took {}ms to compute path",
                 self.get_id(),
                 start_time.elapsed().as_millis()
             );
 
-            self.goto(&Point2::new(result[0], result[1]), angle).await;
+            self.goto(&Point2::from_vec(&next_point), angle).await;
             followed_path.push(self.get_pos());
         }
         Ok(followed_path)

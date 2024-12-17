@@ -14,13 +14,17 @@ pub async fn do_square(robot: &Robot) {
     println!("reached dest!");
 }
 
-pub async fn do_square_rrt(world: &Arc<Mutex<World>>, robot: &Robot) -> Result<(), String> {
-    robot.goto_rrt(world, &Point2::new(0., 1.), None).await?;
-    robot.goto_rrt(world, &Point2::new(1., 1.), None).await?;
-    robot.goto_rrt(world, &Point2::new(1., 0.), None).await?;
-    robot.goto_rrt(world, &Point2::new(0., 0.), None).await?;
+pub async fn do_square_rrt(
+    world: &Arc<Mutex<World>>,
+    robot: &Robot,
+) -> Result<Vec<Point2>, String> {
+    let mut path = vec![robot.get_pos()];
+    path.extend(robot.goto_rrt(world, &Point2::new(-1., 1.), None).await?);
+    path.extend(robot.goto_rrt(world, &Point2::new(1., 1.), None).await?);
+    path.extend(robot.goto_rrt(world, &Point2::new(1., -1.), None).await?);
+    path.extend(robot.goto_rrt(world, &Point2::new(-1., -1.), None).await?);
     println!("reached dest!");
-    Ok(())
+    Ok(path)
 }
 
 pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {

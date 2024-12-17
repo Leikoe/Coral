@@ -70,10 +70,10 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
             }
         }
 
-        println!(
-            "[DEBUG] {} packets were pending, they were applied!",
-            pending_packets_count
-        );
+        // println!(
+        //     "[TRACE] {} packets were pending, they were applied!",
+        //     pending_packets_count
+        // );
 
         // println!("[DEBUG] world state");
         // println!("\tball pos: {:?}", world.lock().unwrap().ball.get_pos());
@@ -164,7 +164,7 @@ async fn main() {
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
-    sleep(Duration::from_secs(1)).await; // AWAIT ROBOTS DETECTION
+    sleep(CONTROL_PERIOD + Duration::from_millis(10)).await; // AWAIT ROBOTS DETECTION
 
     // robot aliases
     // let (r0, r1, r2) = (
@@ -176,12 +176,14 @@ async fn main() {
     let r0 = world.lock().unwrap().team.get(&0).unwrap().clone();
 
     // do a square
-    // r0.set_target_vel(Vec2::new(0.5, 0.));
+    // r0.set_target_vel(Vec2::new(1., 0.));
     // sleep(Duration::from_secs(1)).await;
-    // do_square_rrt(&world, r0).await;
+    let path = do_square_rrt(&world, &r0)
+        .await
+        .expect("couldn't find a path");
 
-    let goal = Point2::new(-3., 0.);
-    let path = r0.goto_rrt(&world, &goal, None).await.unwrap();
+    // let goal = Point2::new(-3., 0.);
+    // let path = r0.goto_rrt(&world, &goal, None).await.unwrap();
 
     {
         // PLOT
@@ -213,13 +215,13 @@ async fn main() {
         )
         .unwrap();
 
-        ctx.draw_series(
-            vec![goal]
-                .iter()
-                .map(|p| Circle::new((to_int(p.x), to_int(p.y)), 5, RED.filled()))
-                .take(1),
-        )
-        .unwrap();
+        // ctx.draw_series(
+        //     vec![goal]
+        //         .iter()
+        //         .map(|p| Circle::new((to_int(p.x), to_int(p.y)), 5, RED.filled()))
+        //         .take(1),
+        // )
+        // .unwrap();
 
         ctx.draw_series(LineSeries::new(
             path.iter().map(|p| (to_int(p.x), to_int(p.y))),
