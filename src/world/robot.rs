@@ -380,13 +380,13 @@ impl Robot<AllyData> {
         {
             let start = Point2::zero();
             let goal = self.pov(destination.get_reactive());
-            let rect = world.lock().unwrap().field;
+            let field = world.lock().unwrap().field;
 
             let path = rrt::dual_rrt_connect(
                 &[start.x, start.y],
                 &[goal.x, goal.y],
                 |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
-                || rect.sample_inside().to_vec(),
+                || field.sample_inside().to_vec(),
                 0.1,
                 RRT_MAX_TRIES,
             )?;
