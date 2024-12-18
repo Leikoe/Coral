@@ -405,14 +405,17 @@ impl Robot<AllyData> {
             let start = Instant::now();
             let trajectory = CubicSpline::new(times, path).unwrap();
             while self.is_a_valid_trajectory(&trajectory, world, avoidance_mode) {
-                let v = match trajectory.velocity(start.elapsed().as_secs_f32()) {
+                let elapsed_s = start.elapsed().as_secs_f32();
+                let v = match trajectory.velocity(elapsed_s) {
                     Some(v) => Vec2::from_vec(&v),
                     None => {
                         self.set_target_vel(Vec2::zero());
                         break; // Done
                     }
                 };
-                self.set_target_vel(v);
+                let p = Point2::from_vec(&trajectory.position(elapsed_s).unwrap()); // for now assume that we returned above if it was done
+                let p_diff = p - self.get_reactive();
+                self.set_target_vel(v + p_diff * 0.1);
                 sleep(CONTROL_PERIOD).await;
                 followed_path.push(self.get_reactive());
             }
