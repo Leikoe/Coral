@@ -3,7 +3,7 @@ use crabe_async::{
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
     math::{Point2, Rect, Vec2},
-    world::{Ball, TeamColor, World},
+    world::{AvoidanceMode, Ball, TeamColor, World},
     CONTROL_PERIOD,
 };
 use plotters::{
@@ -48,10 +48,15 @@ async fn main() {
     //     .await
     //     .expect("couldn't find a path");
 
-    let ennemy_goal = Point2::new(4.5, 0.);
-    for _ in 0..10 {
-        shoot(&world, &r0, &ball, &ennemy_goal).await;
-    }
+    let goal = Point2::new(2., 0.);
+    let _ = r0
+        .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
+        .await;
+
+    // let ennemy_goal = Point2::new(4.5, 0.);
+    // for _ in 0..10 {
+    //     shoot(&world, &r0, &ball, &ennemy_goal).await;
+    // }
 
     // {
     //     // PLOT

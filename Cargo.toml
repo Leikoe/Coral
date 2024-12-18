@@ -5,13 +5,20 @@ edition = "2021"
 default-run = "crabe_async"
 
 [dependencies]
+# async executor / runtime
 tokio = { version = "1", features = ["full"] }
+
 # path planning
 rrt = "0.7.0"
 rand = "0.8.5"
-# multicast sockets
+
+# trajectory generation
+trajectory = "0.1.0"
+
+# advanced socket configuration
 socket2 = "0.5.8"
 
+# temp viz
 plotters = "0.3.7"
 
 # protobuf

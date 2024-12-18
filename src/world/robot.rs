@@ -1,10 +1,16 @@
+use tokio::time::sleep;
+use trajectory::{CubicSpline, Trajectory};
+
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
     math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Rect, Vec2},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 use super::Ball;
 
@@ -136,6 +142,16 @@ impl<D: RobotData> Robot<D> {
     fn collides_with_robot(&self, other_pos: Point2) -> bool {
         self.distance_to(&other_pos) < 0.3 // a robot is 10cm radius => 0.3 leaves 10cm between robots
     }
+
+    fn pov(&self, pos: Point2) -> Point2 {
+        let to_pos = self.to(&pos).get_reactive();
+        let self_orientation = self.get_orientation();
+        let inverse_orientation = -self_orientation;
+        Point2::new(
+            to_pos.x * inverse_orientation.cos() - to_pos.y * inverse_orientation.sin(),
+            to_pos.y * inverse_orientation.cos() + to_pos.x * inverse_orientation.sin(),
+        )
+    }
 }
 
 impl Robot<AllyData> {
@@ -254,6 +270,27 @@ impl Robot<AllyData> {
         return !is_colliding_with_a_robot && !dbg!(is_colliding_with_ball);
     }
 
+    pub fn is_a_valid_trajectory(
+        &self,
+        traj: &CubicSpline<f32>,
+        world: &Arc<Mutex<World>>,
+        avoidance_mode: AvoidanceMode,
+    ) -> bool {
+        const TIME_STEP: f32 = 200.; // 200ms as per tiger's tdp
+        for i in 0.. {
+            let p = match traj.position(i as f32 * TIME_STEP) {
+                Some(p) => Point2::from_vec(&p),
+                None => {
+                    return true;
+                }
+            };
+            if !self.is_free(p, world, avoidance_mode) {
+                return false;
+            }
+        }
+        true
+    }
+
     pub async fn goto_rrt<T: Reactive<Point2>>(
         &self,
         world: &Arc<Mutex<World>>,
@@ -279,8 +316,9 @@ impl Robot<AllyData> {
         while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             && is_angle_right()
         {
-            let start = self.get_reactive();
-            let goal = destination.get_reactive();
+            let start = Point2::zero();
+            let goal = self.pov(destination.get_reactive());
+
             // let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));
             let rect = world.lock().unwrap().field;
 
@@ -311,6 +349,73 @@ impl Robot<AllyData> {
 
             self.goto(&Point2::from_vec(&next_point), angle).await;
             followed_path.push(self.get_reactive());
+        }
+        Ok(followed_path)
+    }
+
+    pub async fn goto_traj<T: Reactive<Point2>>(
+        &self,
+        world: &Arc<Mutex<World>>,
+        destination: &T,
+        angle: Option<f32>,
+        avoidance_mode: AvoidanceMode,
+    ) -> Result<Vec<Point2>, String> {
+        // fallback to Robot::goto
+        if let AvoidanceMode::None = avoidance_mode {
+            return Ok(self.goto(destination, angle).await);
+        }
+
+        if !self.is_free(self.get_reactive(), world, avoidance_mode) {
+            return Err("we are in a position which isn't free".to_string());
+        }
+
+        let is_angle_right = || match angle {
+            Some(angle) => angle_difference(angle as f64, self.get_orientation() as f64) < 10.,
+            None => true,
+        };
+
+        let mut followed_path = vec![self.get_reactive()];
+        while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
+            && is_angle_right()
+        {
+            let start = Point2::zero();
+            let goal = self.pov(destination.get_reactive());
+            let rect = world.lock().unwrap().field;
+
+            let path = rrt::dual_rrt_connect(
+                &[start.x, start.y],
+                &[goal.x, goal.y],
+                |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
+                || rect.sample_inside().to_vec(),
+                0.1,
+                RRT_MAX_TRIES,
+            )?;
+            const AVG_SPEED: f32 = 2.; // robot avg speed
+            let mut last = path.first().unwrap();
+            let mut last_time = 0.;
+            let mut times = vec![last_time];
+            for p in path.iter().skip(1) {
+                let d = Point2::from_vec(last).distance_to(&Point2::from_vec(p));
+                let t = d / AVG_SPEED;
+                last_time += t;
+                times.push(last_time);
+                last = p;
+            }
+
+            let start = Instant::now();
+            let trajectory = CubicSpline::new(times, path).unwrap();
+            while self.is_a_valid_trajectory(&trajectory, world, avoidance_mode) {
+                let v = match trajectory.velocity(start.elapsed().as_secs_f32()) {
+                    Some(v) => Vec2::from_vec(&v),
+                    None => {
+                        self.set_target_vel(Vec2::zero());
+                        break; // Done
+                    }
+                };
+                self.set_target_vel(v);
+                sleep(CONTROL_PERIOD).await;
+                followed_path.push(self.get_reactive());
+            }
         }
         Ok(followed_path)
     }

@@ -15,6 +15,10 @@ impl Vec2 {
         Self::default()
     }
 
+    pub fn from_vec(v: &[f32]) -> Self {
+        Self::new(v[0], v[1])
+    }
+
     pub fn norm(&self) -> f32 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
