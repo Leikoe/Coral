@@ -1,5 +1,4 @@
-use super::Vec2;
-use crate::world::Trackable;
+use super::{Reactive, Vec2};
 use std::ops::{Add, AddAssign, DivAssign, MulAssign, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -82,8 +81,8 @@ impl Sub<&Vec2> for Point2 {
     }
 }
 
-impl Trackable for Point2 {
-    fn get_pos(&self) -> Point2 {
+impl Reactive<Point2> for Point2 {
+    fn get_reactive(&self) -> Point2 {
         *self
     }
 }

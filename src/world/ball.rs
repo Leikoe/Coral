@@ -1,7 +1,4 @@
-use crate::{
-    math::{Point2, Vec2},
-    world::Trackable,
-};
+use crate::math::{Point2, Reactive, Vec2};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
@@ -29,8 +26,8 @@ impl Ball {
     }
 }
 
-impl Trackable for Ball {
-    fn get_pos(&self) -> Point2 {
+impl Reactive<Point2> for Ball {
+    fn get_reactive(&self) -> Point2 {
         *self.pos.lock().unwrap()
     }
 }

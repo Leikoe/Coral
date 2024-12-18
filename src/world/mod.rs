@@ -1,11 +1,9 @@
 mod ball;
 mod robot;
-mod trackable;
 
 // EXPORTS
 pub use ball::Ball;
 pub use robot::{AvoidanceMode, Robot, RobotId};
-pub use trackable::*;
 
 use crate::math::Rect;
 use std::collections::HashMap;

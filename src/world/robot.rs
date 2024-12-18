@@ -1,6 +1,5 @@
 use crate::{
-    math::{angle_difference, Point2, Rect, Vec2},
-    world::Trackable,
+    math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, Rect, Vec2},
     world::World,
     CONTROL_PERIOD,
 };
@@ -36,8 +35,8 @@ pub struct Robot {
     should_kick: Arc<Mutex<bool>>,
 }
 
-impl Trackable for Robot {
-    fn get_pos(&self) -> Point2 {
+impl Reactive<Point2> for Robot {
+    fn get_reactive(&self) -> Point2 {
         *self.pos.lock().unwrap()
     }
 }
@@ -129,10 +128,14 @@ impl Robot {
     }
 
     // destination is in world space
-    pub async fn goto<T: Trackable>(&self, destination: &T, angle: Option<f32>) -> Vec<Point2> {
-        let mut cur_pos = self.get_pos();
+    pub async fn goto<T: Reactive<Point2>>(
+        &self,
+        destination: &T,
+        angle: Option<f32>,
+    ) -> Vec<Point2> {
+        let mut cur_pos = self.get_reactive();
         let mut followed_path = vec![cur_pos];
-        let mut to_pos = destination.get_pos() - cur_pos;
+        let mut to_pos = destination.get_reactive() - cur_pos;
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         while to_pos.norm() > IS_CLOSE_EPSILON {
@@ -154,16 +157,16 @@ impl Robot {
 
             // next iter starts here
             interval.tick().await;
-            cur_pos = self.get_pos(); // compute diff
-            to_pos = destination.get_pos() - cur_pos;
+            cur_pos = self.get_reactive(); // compute diff
+            to_pos = destination.get_reactive() - cur_pos;
             followed_path.push(cur_pos);
         }
         followed_path
     }
 
-    pub fn debug_tp<T: Trackable>(&self, destination: &T, angle: Option<f32>) {
+    pub fn debug_tp(&self, destination: Point2, angle: Option<f32>) {
         let mut pos = self.pos.lock().unwrap();
-        *pos = destination.get_pos();
+        *pos = destination;
 
         let angle = angle.unwrap_or(self.get_orientation());
         let mut orientation = self.orientation.lock().unwrap();
@@ -200,7 +203,7 @@ impl Robot {
         return !dbg!(is_colliding_with_robot) && !dbg!(is_colliding_with_ball);
     }
 
-    pub async fn goto_rrt<T: Trackable>(
+    pub async fn goto_rrt<T: Reactive<Point2>>(
         &self,
         world: &Arc<Mutex<World>>,
         destination: &T,
@@ -212,7 +215,7 @@ impl Robot {
             return Ok(self.goto(destination, angle).await);
         }
 
-        if !self.is_free(self.get_pos(), world, avoidance_mode) {
+        if !self.is_free(self.get_reactive(), world, avoidance_mode) {
             return Err("we are in a position which isn't free".to_string());
         }
 
@@ -221,12 +224,12 @@ impl Robot {
             None => true,
         };
 
-        let mut followed_path = vec![self.get_pos()];
-        while self.get_pos().distance_to(&destination.get_pos()) > IS_CLOSE_EPSILON
+        let mut followed_path = vec![self.get_reactive()];
+        while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             && is_angle_right()
         {
-            let start = self.get_pos();
-            let goal = destination.get_pos();
+            let start = self.get_reactive();
+            let goal = destination.get_reactive();
             // let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));
             let rect = world.lock().unwrap().field;
 
@@ -256,7 +259,7 @@ impl Robot {
             );
 
             self.goto(&Point2::from_vec(&next_point), angle).await;
-            followed_path.push(self.get_pos());
+            followed_path.push(self.get_reactive());
         }
         Ok(followed_path)
     }

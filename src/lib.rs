@@ -14,10 +14,10 @@ use std::{
 };
 
 use controllers::RobotController;
-use math::{angle_difference, Point2};
+use math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext};
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
-use world::{ReactiveVec2, Robot, TeamColor, Trackable, World};
+use world::{Robot, TeamColor, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
 
@@ -100,13 +100,16 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
         // );
 
         println!("[DEBUG] world state");
-        println!("\tball pos: {:?}", world.lock().unwrap().ball.get_pos());
+        println!(
+            "\tball pos: {:?}",
+            world.lock().unwrap().ball.get_reactive()
+        );
         for r in world.lock().unwrap().team.values() {
             println!(
                 "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
                 r.get_id(),
                 r.should_dribble(),
-                r.get_pos(),
+                r.get_reactive(),
                 r.get_orientation()
             );
         }

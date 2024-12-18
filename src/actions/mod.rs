@@ -5,13 +5,13 @@ use std::{
 };
 
 use crate::{
-    math::{Line, Point2, Vec2},
-    world::{AvoidanceMode, Ball, ReactiveVec2, Robot, Trackable, World},
+    math::{Line, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
+    world::{AvoidanceMode, Ball, Robot, World},
     CONTROL_PERIOD,
 };
 use tokio::{join, select, time::sleep};
 
-pub async fn shoot<T: Trackable + Clone>(
+pub async fn shoot<T: Reactive<Point2> + Clone>(
     world: &Arc<Mutex<World>>,
     robot: &Robot,
     ball: &Ball,

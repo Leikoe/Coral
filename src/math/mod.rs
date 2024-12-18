@@ -1,10 +1,12 @@
 pub mod line;
 pub mod point;
+pub mod reactive;
 pub mod rect;
 pub mod vec;
 
 pub use line::*;
 pub use point::*;
+pub use reactive::*;
 pub use rect::*;
 pub use vec::*;
 
