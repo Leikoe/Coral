@@ -128,7 +128,7 @@ impl<D: RobotData> Robot<D> {
             let is_facing_ball =
                 angle_difference(r_to_ball.angle() as f64, self.get_orientation() as f64).abs()
                     < 20.;
-            is_facing_ball && (r_to_ball.norm() < 0.11) // TODO: stop the magic
+            is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
         };
         self.set_has_ball(has_ball);
     }
@@ -163,7 +163,7 @@ impl Robot<AllyData> {
     }
 
     pub fn should_dribble(&self) -> bool {
-        self.internal_data.should_dribble.lock().unwrap().clone()
+        *self.internal_data.should_dribble.lock().unwrap()
     }
 
     pub fn get_target_vel(&self) -> Vec2 {

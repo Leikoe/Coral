@@ -29,6 +29,7 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
         )
         .await
         .unwrap(); // will fail if we are against the ball
+    robot.enable_dribbler();
     select! {
         _ = robot
             .goto_rrt(
@@ -39,6 +40,7 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
             ) => {}
         _ = robot.wait_until_has_ball() => {}
     };
+    robot.disable_dribbler();
     let mut interval = tokio::time::interval(Duration::from_secs(1));
     while robot.has_ball() {
         interval.tick().await;

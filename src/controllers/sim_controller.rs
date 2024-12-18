@@ -53,7 +53,7 @@ impl RobotController<usize, SendError> for SimRobotController {
             let dribbler_speed = if robot.should_dribble() {
                 Some(1500.) // RPM ?
             } else {
-                None
+                Some(0.)
             };
 
             let robot_command = RobotCommand {
@@ -94,7 +94,7 @@ impl RobotController<usize, SendError> for SimRobotController {
                 }),
                 kick_speed: None,
                 kick_angle: None,
-                dribbler_speed: None,
+                dribbler_speed: Some(0.),
             });
         }
 
