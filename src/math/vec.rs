@@ -1,15 +1,9 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Default)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
-}
-
-impl Default for Vec2 {
-    fn default() -> Self {
-        Self::zero()
-    }
 }
 
 impl Vec2 {
@@ -18,7 +12,7 @@ impl Vec2 {
     }
 
     pub fn zero() -> Self {
-        Self::new(0., 0.)
+        Self::default()
     }
 
     pub fn norm(&self) -> f32 {

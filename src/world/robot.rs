@@ -1,9 +1,12 @@
 use crate::{
-    math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, Rect, Vec2},
+    league_protocols::vision_packet::SslDetectionRobot,
+    math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Rect, Vec2},
     world::World,
-    CONTROL_PERIOD,
+    CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::sync::{Arc, Mutex};
+
+use super::Ball;
 
 pub type RobotId = u8;
 const IS_CLOSE_EPSILON: f32 = 0.05;
@@ -25,7 +28,7 @@ pub enum AvoidanceMode {
 // TODO: RobotData, Robot, AllyData and EnnemyData should be private
 pub trait RobotData: Clone + Default {}
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Robot<D: RobotData> {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
@@ -69,6 +72,13 @@ impl<D: RobotData> Robot<D> {
         }
     }
 
+    pub fn default_with_id(id: RobotId) -> Self {
+        Self {
+            id,
+            ..Default::default()
+        }
+    }
+
     pub fn get_id(&self) -> RobotId {
         self.id
     }
@@ -103,6 +113,28 @@ impl<D: RobotData> Robot<D> {
     pub fn set_orientation(&mut self, orientation: f32) {
         let mut _orientation = self.orientation.lock().unwrap();
         *_orientation = orientation;
+    }
+
+    pub fn update_from_packet(&mut self, detection: SslDetectionRobot, ball: &Ball) {
+        let detected_pos = Point2::new(
+            detection.x / DETECTION_SCALING_FACTOR,
+            detection.y / DETECTION_SCALING_FACTOR,
+        );
+        let detected_orientation = detection.orientation();
+        self.set_orientation(detected_orientation);
+        self.set_pos(detected_pos);
+        let has_ball = {
+            let r_to_ball = self.to(ball);
+            let is_facing_ball =
+                angle_difference(r_to_ball.angle() as f64, self.get_orientation() as f64).abs()
+                    < 20.;
+            is_facing_ball && (r_to_ball.norm() < 0.11) // TODO: stop the magic
+        };
+        self.set_has_ball(has_ball);
+    }
+
+    fn collides_with_robot(&self, other_pos: Point2) -> bool {
+        self.distance_to(&other_pos) < 0.3 // a robot is 10cm radius => 0.3 leaves 10cm between robots
     }
 }
 
@@ -189,24 +221,37 @@ impl Robot<AllyData> {
         followed_path
     }
 
-    fn is_free(&self, p: Point2, world: &Arc<Mutex<World>>, avoidance_mode: AvoidanceMode) -> bool {
+    fn is_free(
+        &self,
+        pos: Point2,
+        world: &Arc<Mutex<World>>,
+        avoidance_mode: AvoidanceMode,
+    ) -> bool {
         if let AvoidanceMode::None = avoidance_mode {
             return true;
         }
 
-        let is_colliding_with_robot = world
+        let is_colliding_with_allies = world
             .lock()
             .unwrap()
             .team
             .values()
             .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
-            .any(|r| p.distance_to(r) < 0.3); // a robot is 10cm radius => 0.3 leaves 10cm between robots
+            .any(|r| r.collides_with_robot(pos));
+        let is_colliding_with_ennemies = world
+            .lock()
+            .unwrap()
+            .ennemies
+            .values()
+            .any(|r| r.collides_with_robot(pos));
+
+        let is_colliding_with_a_robot = is_colliding_with_allies || is_colliding_with_ennemies;
         if let AvoidanceMode::AvoidRobots = avoidance_mode {
-            return !is_colliding_with_robot;
+            return !is_colliding_with_a_robot;
         }
 
-        let is_colliding_with_ball = p.distance_to(&world.lock().unwrap().ball) < 0.2;
-        return !dbg!(is_colliding_with_robot) && !dbg!(is_colliding_with_ball);
+        let is_colliding_with_ball = pos.distance_to(&world.lock().unwrap().ball) < 0.2;
+        return !is_colliding_with_a_robot && !dbg!(is_colliding_with_ball);
     }
 
     pub async fn goto_rrt<T: Reactive<Point2>>(

@@ -1,7 +1,7 @@
 use super::{Reactive, Vec2};
 use std::ops::{Add, AddAssign, DivAssign, MulAssign, Sub, SubAssign};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct Point2 {
     pub x: f32,
     pub y: f32,
@@ -13,7 +13,7 @@ impl Point2 {
     }
 
     pub fn zero() -> Self {
-        Self::new(0., 0.)
+        Self::default()
     }
 
     pub fn to(&self, rhs: Point2) -> Vec2 {

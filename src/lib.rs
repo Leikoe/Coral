@@ -17,9 +17,10 @@ use controllers::RobotController;
 use math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext};
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
-use world::{AllyRobot, TeamColor, World};
+use world::{AllyRobot, EnnemyRobot, TeamColor, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
+const DETECTION_SCALING_FACTOR: f32 = 1000.;
 
 async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
     world: Arc<Mutex<World>>,
@@ -39,54 +40,38 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                 if let Some(detection) = packet.detection {
                     if let Some(ball_detection) = detection.balls.get(0) {
                         ball.set_pos(Point2::new(
-                            ball_detection.x / 1000.,
-                            ball_detection.y / 1000.,
+                            ball_detection.x / DETECTION_SCALING_FACTOR,
+                            ball_detection.y / DETECTION_SCALING_FACTOR,
                         ));
                     }
 
                     // TODO: handle ennemies
-                    let (allies, _ennemies) = match side {
+                    let (allies, ennemies) = match side {
                         TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
                         TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
                     };
                     for ally_detection in allies {
                         let rid = ally_detection.robot_id() as u8;
-                        let detected_pos =
-                            Point2::new(ally_detection.x / 1000., ally_detection.y / 1000.);
-                        let detected_orientation = ally_detection.orientation();
                         if w.team.get_mut(&rid).is_none() {
-                            println!("[DEBUG] ally {} was added to team!", rid);
-                            let r = AllyRobot::new(rid, detected_pos, detected_orientation);
+                            println!("[DEBUG] added ally {} to the team!", rid);
+                            let r = AllyRobot::default_with_id(rid);
                             w.team.insert(rid, r);
                         }
-
-                        {
-                            // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                            let r = w.team.get_mut(&rid).unwrap();
-                            r.set_orientation(detected_orientation);
-                            r.set_pos(detected_pos);
-                        }
-                        let has_ball = {
-                            let r = w.team.get(&rid).unwrap();
-                            let r_to_ball = r.to(&ball);
-                            let is_facing_ball = angle_difference(
-                                r_to_ball.angle() as f64,
-                                r.get_orientation() as f64,
-                            )
-                            .abs()
-                                < 20.;
-                            is_facing_ball && (r_to_ball.norm() < 0.11) // TODO: stop the magic
-                        };
-
                         // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
                         let r = w.team.get_mut(&rid).unwrap();
-                        // if rid == 0 {
-                        //     dbg!(r_to_ball.angle());
-                        //     dbg!(r.get_orientation());
-                        //     dbg!(r_to_ball.norm());
-                        //     dbg!(has_ball);
-                        // }
-                        r.set_has_ball(has_ball);
+                        r.update_from_packet(ally_detection, &ball);
+                    }
+
+                    for ennemy_detection in ennemies {
+                        let rid = ennemy_detection.robot_id() as u8;
+                        if w.ennemies.get_mut(&rid).is_none() {
+                            println!("[DEBUG] added ennemy {} to the ennemies!", rid);
+                            let r = EnnemyRobot::default_with_id(rid);
+                            w.ennemies.insert(rid, r);
+                        }
+                        // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                        let r = w.ennemies.get_mut(&rid).unwrap();
+                        r.update_from_packet(ennemy_detection, &ball);
                     }
                 }
 
