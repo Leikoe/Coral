@@ -22,54 +22,55 @@ pub enum AvoidanceMode {
     AvoidRobotsAndBall,
 }
 
+// TODO: RobotData, Robot, AllyData and EnnemyData should be private
+pub trait RobotData: Clone + Default {}
+
 #[derive(Clone)]
-pub struct Robot {
+pub struct Robot<D: RobotData> {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
-    // control stuff
+    internal_data: D,
+}
+
+#[derive(Clone, Default)]
+pub struct AllyData {
     target_vel: Arc<Mutex<Vec2>>,
     target_angular_vel: Arc<Mutex<f32>>,
     should_dribble: Arc<Mutex<bool>>,
     should_kick: Arc<Mutex<bool>>,
 }
 
-impl Reactive<Point2> for Robot {
+impl RobotData for AllyData {}
+
+#[derive(Clone, Default)]
+pub struct EnnemyData;
+
+impl RobotData for EnnemyData {}
+
+pub type AllyRobot = Robot<AllyData>;
+pub type EnnemyRobot = Robot<EnnemyData>;
+
+impl<D: RobotData> Reactive<Point2> for Robot<D> {
     fn get_reactive(&self) -> Point2 {
         *self.pos.lock().unwrap()
     }
 }
 
-impl Robot {
+impl<D: RobotData> Robot<D> {
     pub fn new(id: RobotId, pos: Point2, orientation: f32) -> Self {
         Self {
             id,
             pos: Arc::new(Mutex::new(pos)),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
-            target_vel: Arc::new(Mutex::new(Vec2::zero())),
-            target_angular_vel: Arc::new(Mutex::new(0.)),
-            should_dribble: Arc::new(Mutex::new(false)),
-            should_kick: Arc::new(Mutex::new(false)),
+            internal_data: Default::default(),
         }
     }
 
     pub fn get_id(&self) -> RobotId {
         self.id
-    }
-
-    pub fn kick(&self) {
-        let mut should_kick = self.should_kick.lock().unwrap();
-        *should_kick = true;
-    }
-
-    // return the should_kick state & resets it back to false (similar to Option::take)
-    pub fn take_should_kick(&self) -> bool {
-        let mut should_kick = self.should_kick.lock().unwrap();
-        let ret = *should_kick;
-        *should_kick = false;
-        ret
     }
 
     pub fn has_ball(&self) -> bool {
@@ -81,49 +82,73 @@ impl Robot {
         *_has_ball = has_ball;
     }
 
-    pub fn enable_dribbler(&self) {
-        let mut is_dribbling = self.should_dribble.lock().unwrap();
-        *is_dribbling = true;
-    }
-
-    pub fn disable_dribbler(&self) {
-        let mut is_dribbling = self.should_dribble.lock().unwrap();
-        *is_dribbling = false;
-    }
-
     pub fn get_orientation(&self) -> f32 {
         *self.orientation.lock().unwrap()
     }
 
-    pub fn should_dribble(&self) -> bool {
-        self.should_dribble.lock().unwrap().clone()
-    }
-
-    pub fn apply_vel(&mut self, vel: Vec2) {
+    pub fn debug_tp(&self, destination: Point2, angle: Option<f32>) {
         let mut pos = self.pos.lock().unwrap();
-        *pos += vel;
+        *pos = destination;
+
+        let angle = angle.unwrap_or(self.get_orientation());
+        let mut orientation = self.orientation.lock().unwrap();
+        *orientation = angle;
     }
 
-    pub fn apply_angular_vel(&mut self, angular_vel: f32) {
-        let mut orientation = self.orientation.lock().unwrap();
-        *orientation += angular_vel;
+    pub fn set_pos(&mut self, pos: Point2) {
+        let mut _pos = self.pos.lock().unwrap();
+        *_pos = pos;
+    }
+
+    pub fn set_orientation(&mut self, orientation: f32) {
+        let mut _orientation = self.orientation.lock().unwrap();
+        *_orientation = orientation;
+    }
+}
+
+impl Robot<AllyData> {
+    pub fn kick(&self) {
+        let mut should_kick = self.internal_data.should_kick.lock().unwrap();
+        *should_kick = true;
+    }
+
+    // return the should_kick state & resets it back to false (similar to Option::take)
+    pub fn take_should_kick(&self) -> bool {
+        let mut should_kick = self.internal_data.should_kick.lock().unwrap();
+        let ret = *should_kick;
+        *should_kick = false;
+        ret
+    }
+
+    pub fn enable_dribbler(&self) {
+        let mut is_dribbling = self.internal_data.should_dribble.lock().unwrap();
+        *is_dribbling = true;
+    }
+
+    pub fn disable_dribbler(&self) {
+        let mut is_dribbling = self.internal_data.should_dribble.lock().unwrap();
+        *is_dribbling = false;
+    }
+
+    pub fn should_dribble(&self) -> bool {
+        self.internal_data.should_dribble.lock().unwrap().clone()
     }
 
     pub fn get_target_vel(&self) -> Vec2 {
-        *self.target_vel.lock().unwrap()
+        *self.internal_data.target_vel.lock().unwrap()
     }
 
     pub fn get_target_angular_vel(&self) -> f32 {
-        *self.target_angular_vel.lock().unwrap()
+        *self.internal_data.target_angular_vel.lock().unwrap()
     }
 
     pub fn set_target_vel(&self, target_vel: Vec2) {
-        let mut self_target_vel = self.target_vel.lock().unwrap();
+        let mut self_target_vel = self.internal_data.target_vel.lock().unwrap();
         *self_target_vel = target_vel;
     }
 
     pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
-        let mut self_target_angular_vel = self.target_angular_vel.lock().unwrap();
+        let mut self_target_angular_vel = self.internal_data.target_angular_vel.lock().unwrap();
         *self_target_angular_vel = target_angular_vel;
     }
 
@@ -162,25 +187,6 @@ impl Robot {
             followed_path.push(cur_pos);
         }
         followed_path
-    }
-
-    pub fn debug_tp(&self, destination: Point2, angle: Option<f32>) {
-        let mut pos = self.pos.lock().unwrap();
-        *pos = destination;
-
-        let angle = angle.unwrap_or(self.get_orientation());
-        let mut orientation = self.orientation.lock().unwrap();
-        *orientation = angle;
-    }
-
-    pub fn set_pos(&mut self, pos: Point2) {
-        let mut _pos = self.pos.lock().unwrap();
-        *_pos = pos;
-    }
-
-    pub fn set_orientation(&mut self, orientation: f32) {
-        let mut _orientation = self.orientation.lock().unwrap();
-        *_orientation = orientation;
     }
 
     fn is_free(&self, p: Point2, world: &Arc<Mutex<World>>, avoidance_mode: AvoidanceMode) -> bool {

@@ -17,7 +17,7 @@ use controllers::RobotController;
 use math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext};
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
-use world::{Robot, TeamColor, World};
+use world::{AllyRobot, TeamColor, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
 
@@ -56,7 +56,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         let detected_orientation = ally_detection.orientation();
                         if w.team.get_mut(&rid).is_none() {
                             println!("[DEBUG] ally {} was added to team!", rid);
-                            let r = Robot::new(rid, detected_pos, detected_orientation);
+                            let r = AllyRobot::new(rid, detected_pos, detected_orientation);
                             w.team.insert(rid, r);
                         }
 
@@ -121,7 +121,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
             .team
             .values()
             .map(|r| r.clone())
-            .collect::<Vec<Robot>>();
+            .collect::<Vec<AllyRobot>>();
         let _ = controller
             .send_proper_command_for(robots.into_iter())
             .await

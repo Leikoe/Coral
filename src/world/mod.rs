@@ -3,7 +3,7 @@ mod robot;
 
 // EXPORTS
 pub use ball::Ball;
-pub use robot::{AvoidanceMode, Robot, RobotId};
+pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId};
 
 use crate::math::Rect;
 use std::collections::HashMap;
@@ -18,5 +18,6 @@ pub enum TeamColor {
 pub struct World {
     pub field: Rect,
     pub ball: Ball,
-    pub team: HashMap<RobotId, Robot>,
+    pub team: HashMap<RobotId, AllyRobot>,
+    pub ennemies: HashMap<RobotId, EnnemyRobot>,
 }

@@ -5,7 +5,7 @@ use crate::{
         robot_move_command, MoveLocalVelocity, RobotCommand, RobotControl, RobotMoveCommand,
     },
     net::{udp_transceiver::UdpTransceiver, SendError},
-    world::{Robot, TeamColor},
+    world::{AllyRobot, TeamColor},
 };
 
 use super::RobotController;
@@ -31,7 +31,7 @@ impl SimRobotController {
 impl RobotController<usize, SendError> for SimRobotController {
     fn send_proper_command_for(
         &mut self,
-        robots: impl Iterator<Item = Robot>,
+        robots: impl Iterator<Item = AllyRobot>,
     ) -> impl Future<Output = Result<usize, SendError>> + Send {
         let mut packet = RobotControl::default();
 

@@ -27,6 +27,7 @@ async fn main() {
         field: Rect::new(Point2::new(-4.5, 3.), Point2::new(4.5, -3.)),
         ball: Ball::new(Point2::new(-0.6, -0.2), Vec2::new(0.4, 0.4)),
         team: HashMap::new(),
+        ennemies: HashMap::new(),
     }));
 
     let color = TeamColor::Blue;

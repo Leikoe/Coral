@@ -1,19 +1,18 @@
 use std::{
-    ops::Mul,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
 use crate::{
     math::{Line, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
-    world::{AvoidanceMode, Ball, Robot, World},
+    world::{AllyRobot, AvoidanceMode, Ball, World},
     CONTROL_PERIOD,
 };
 use tokio::{join, select, time::sleep};
 
 pub async fn shoot<T: Reactive<Point2> + Clone>(
     world: &Arc<Mutex<World>>,
-    robot: &Robot,
+    robot: &AllyRobot,
     ball: &Ball,
     goal: &T,
 ) {
@@ -47,7 +46,7 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
     }
 }
 
-pub async fn do_square(robot: &Robot) {
+pub async fn do_square(robot: &AllyRobot) {
     robot.goto(&Point2::new(0., 1.), None).await;
     robot.goto(&Point2::new(1., 1.), None).await;
     robot.goto(&Point2::new(1., 0.), None).await;
@@ -57,7 +56,7 @@ pub async fn do_square(robot: &Robot) {
 
 pub async fn do_square_rrt(
     world: &Arc<Mutex<World>>,
-    robot: &Robot,
+    robot: &AllyRobot,
 ) -> Result<Vec<Point2>, String> {
     let poses = vec![
         Point2::new(-1., 1.),
