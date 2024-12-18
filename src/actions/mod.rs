@@ -47,36 +47,36 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
     }
 }
 
-// pub async fn do_square(robot: &Robot) {
-//     robot.goto(&Point2::new(0., 1.), None).await;
-//     robot.goto(&Point2::new(1., 1.), None).await;
-//     robot.goto(&Point2::new(1., 0.), None).await;
-//     robot.goto(&Point2::new(0., 0.), None).await;
-//     println!("reached dest!");
-// }
+pub async fn do_square(robot: &Robot) {
+    robot.goto(&Point2::new(0., 1.), None).await;
+    robot.goto(&Point2::new(1., 1.), None).await;
+    robot.goto(&Point2::new(1., 0.), None).await;
+    robot.goto(&Point2::new(0., 0.), None).await;
+    println!("reached dest!");
+}
 
-// pub async fn do_square_rrt(
-//     world: &Arc<Mutex<World>>,
-//     robot: &Robot,
-// ) -> Result<Vec<Point2>, String> {
-//     let poses = vec![
-//         Point2::new(-1., 1.),
-//         Point2::new(1., 1.),
-//         Point2::new(1., -1.),
-//         Point2::new(-1., -1.),
-//     ];
+pub async fn do_square_rrt(
+    world: &Arc<Mutex<World>>,
+    robot: &Robot,
+) -> Result<Vec<Point2>, String> {
+    let poses = vec![
+        Point2::new(-1., 1.),
+        Point2::new(1., 1.),
+        Point2::new(1., -1.),
+        Point2::new(-1., -1.),
+    ];
 
-//     let mut path = vec![robot.get_pos()];
-//     for pos in &poses {
-//         path.extend(
-//             robot
-//                 .goto_rrt(world, pos, None, AvoidanceMode::AvoidRobotsAndBall)
-//                 .await?,
-//         );
-//     }
-//     println!("reached dest!");
-//     Ok(path)
-// }
+    let mut path = vec![robot.get_reactive()];
+    for pos in &poses {
+        path.extend(
+            robot
+                .goto_rrt(world, pos, None, AvoidanceMode::AvoidRobotsAndBall)
+                .await?,
+        );
+    }
+    println!("reached dest!");
+    Ok(path)
+}
 
 // pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {
 //     let (p1, p2, p3) = (
@@ -95,32 +95,6 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
 //     robot.enable_dribbler();
 //     robot.goto(ball, None).await; // this will follow the ball even if it moves
 //     println!("got ball!");
-// }
-
-// pub async fn shoot(world: &Arc<Mutex<World>>, robot: &Robot, ball: &Ball) -> Result<(), String> {
-//     robot
-//         .goto_rrt(
-//             &world,
-//             &(ball.get_pos() - Vec2::new(-0.2, 0.)),
-//             Some(robot.to(ball).angle()),
-//             AvoidanceMode::AvoidRobotsAndBall,
-//         )
-//         .await?;
-//     robot
-//         .goto_rrt(
-//             &world,
-//             &(ball.get_pos() - Vec2::new(-0.05, 0.)),
-//             None,
-//             AvoidanceMode::AvoidRobots,
-//         )
-//         .await?;
-//     while robot.has_ball() {
-//         robot.kick();
-//         sleep(CONTROL_PERIOD).await;
-//     }
-//     println!("[INFO] done shooting!");
-
-//     Ok(())
 // }
 
 // pub async fn intercept(robot: &Robot, ball: &Ball) {
