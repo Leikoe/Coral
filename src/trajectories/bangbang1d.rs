@@ -12,7 +12,7 @@ struct BangBangPart {
     accel: f64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct BangBang1d {
     bangbang_parts: [BangBangPart; 3],
     n_parts: usize,
@@ -227,9 +227,9 @@ impl Trajectory<f64, f64> for BangBang1d {
         self.bangbang_parts[self.n_parts - 1].end_time
     }
 
-    fn get_final_destination(&self) -> f64 {
-        self.get_position(self.get_total_runtime())
-    }
+    // fn get_final_destination(&self) -> f64 {
+    //     self.get_position(self.get_total_runtime())
+    // }
 
     fn get_time_sections(&self) -> impl Iterator<Item = f64> {
         self.bangbang_parts[..self.n_parts]
