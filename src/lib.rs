@@ -4,6 +4,7 @@ pub mod controllers;
 pub mod league_protocols;
 pub mod math;
 pub mod net;
+pub mod trajectories;
 pub mod vision;
 pub mod world;
 
