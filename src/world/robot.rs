@@ -1,9 +1,9 @@
 use tokio::time::sleep;
-use trajectory::{CubicSpline, Trajectory};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
     math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Rect, Vec2},
+    trajectories::{bangbang2d::BangBang2d, Trajectory},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
@@ -143,7 +143,7 @@ impl<D: RobotData> Robot<D> {
         self.distance_to(&other_pos) < 0.3 // a robot is 10cm radius => 0.3 leaves 10cm between robots
     }
 
-    fn pov(&self, pos: Point2) -> Point2 {
+    pub fn pov(&self, pos: Point2) -> Point2 {
         let to_pos = self.to(&pos).get_reactive();
         let self_orientation = self.get_orientation();
         let inverse_orientation = -self_orientation;
@@ -270,26 +270,26 @@ impl Robot<AllyData> {
         return !is_colliding_with_a_robot && !dbg!(is_colliding_with_ball);
     }
 
-    pub fn is_a_valid_trajectory(
-        &self,
-        traj: &CubicSpline<f32>,
-        world: &Arc<Mutex<World>>,
-        avoidance_mode: AvoidanceMode,
-    ) -> bool {
-        const TIME_STEP: f32 = 200.; // 200ms as per tiger's tdp
-        for i in 0.. {
-            let p = match traj.position(i as f32 * TIME_STEP) {
-                Some(p) => Point2::from_vec(&p),
-                None => {
-                    return true;
-                }
-            };
-            if !self.is_free(p, world, avoidance_mode) {
-                return false;
-            }
-        }
-        true
-    }
+    // pub fn is_a_valid_trajectory(
+    //     &self,
+    //     traj: &CubicSpline<f32>,
+    //     world: &Arc<Mutex<World>>,
+    //     avoidance_mode: AvoidanceMode,
+    // ) -> bool {
+    //     const TIME_STEP: f32 = 200.; // 200ms as per tiger's tdp
+    //     for i in 0.. {
+    //         let p = match traj.position(i as f32 * TIME_STEP) {
+    //             Some(p) => Point2::from_vec(&p),
+    //             None => {
+    //                 return true;
+    //             }
+    //         };
+    //         if !self.is_free(p, world, avoidance_mode) {
+    //             return false;
+    //         }
+    //     }
+    //     true
+    // }
 
     pub async fn goto_rrt<T: Reactive<Point2>>(
         &self,
@@ -378,10 +378,11 @@ impl Robot<AllyData> {
         while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             && is_angle_right()
         {
-            let start = Point2::zero();
-            let goal = self.pov(destination.get_reactive());
+            let start = self.get_reactive();
+            let goal = destination.get_reactive();
             let field = world.lock().unwrap().field;
 
+            let start_time = Instant::now();
             let path = rrt::dual_rrt_connect(
                 &[start.x, start.y],
                 &[goal.x, goal.y],
@@ -390,34 +391,32 @@ impl Robot<AllyData> {
                 0.1,
                 RRT_MAX_TRIES,
             )?;
-            const AVG_SPEED: f32 = 2.; // robot avg speed
-            let mut last = path.first().unwrap();
-            let mut last_time = 0.;
-            let mut times = vec![last_time];
-            for p in path.iter().skip(1) {
-                let d = Point2::from_vec(last).distance_to(&Point2::from_vec(p));
-                let t = d / AVG_SPEED;
-                last_time += t;
-                times.push(last_time);
-                last = p;
-            }
+            let path: Vec<Point2> = path
+                .into_iter()
+                .skip(1)
+                .map(|p| self.pov(Point2::from_vec(&p)))
+                .collect();
+            println!(
+                "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
+                self.get_id(),
+                start_time.elapsed().as_millis()
+            );
 
-            let start = Instant::now();
-            let trajectory = CubicSpline::new(times, path).unwrap();
-            while self.is_a_valid_trajectory(&trajectory, world, avoidance_mode) {
-                let elapsed_s = start.elapsed().as_secs_f32();
-                let v = match trajectory.velocity(elapsed_s) {
-                    Some(v) => Vec2::from_vec(&v),
-                    None => {
-                        self.set_target_vel(Vec2::zero());
-                        break; // Done
-                    }
-                };
-                let p = Point2::from_vec(&trajectory.position(elapsed_s).unwrap()); // for now assume that we returned above if it was done
-                let p_diff = p - self.get_reactive();
-                self.set_target_vel(v + p_diff * 0.1);
-                sleep(CONTROL_PERIOD).await;
-                followed_path.push(self.get_reactive());
+            for p in path {
+                dbg!(&p);
+                let current_trajectory =
+                    BangBang2d::new(Point2::zero(), self.get_target_vel(), p, 1., 2., 0.01);
+                let start = Instant::now();
+                let mut t = start.elapsed().as_secs_f64();
+                while t < current_trajectory.get_total_runtime() {
+                    let v = current_trajectory.get_acceleration(t);
+                    let p = current_trajectory.get_position(t); // for now assume that we returned above if it was done
+                    let p_diff = p - Point2::zero();
+                    self.set_target_vel(v + p_diff * 0.1);
+                    sleep(CONTROL_PERIOD).await;
+                    t = start.elapsed().as_secs_f64();
+                    followed_path.push(self.get_reactive());
+                }
             }
         }
         Ok(followed_path)

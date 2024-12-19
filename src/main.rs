@@ -2,7 +2,8 @@ use crabe_async::{
     actions::shoot,
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
-    math::{Point2, Rect, Vec2},
+    math::{Point2, Reactive, Rect, Vec2},
+    trajectories::{bangbang2d::BangBang2d, Trajectory},
     world::{AvoidanceMode, Ball, TeamColor, World},
     CONTROL_PERIOD,
 };
@@ -15,7 +16,7 @@ use plotters::{
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::time::sleep;
 
@@ -49,9 +50,22 @@ async fn main() {
     //     .expect("couldn't find a path");
 
     let goal = Point2::new(2., 0.);
-    let _ = r0
-        .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
-        .await;
+    // let _ = r0
+    //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
+    //     .await;
+
+    loop {
+        let traj = BangBang2d::new(Point2::zero(), Vec2::zero(), r0.pov(goal), 4., 9., 0.01);
+        let start = Instant::now();
+        while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
+            let t = start.elapsed().as_secs_f64();
+            let v = traj.get_velocity(t);
+            let p = traj.get_position(t);
+            r0.set_target_vel(dbg!(v + (p - Point2::zero()) * 0.05));
+            sleep(CONTROL_PERIOD).await;
+        }
+        r0.set_target_vel(Vec2::zero());
+    }
 
     // let ennemy_goal = Point2::new(4.5, 0.);
     // for _ in 0..10 {

@@ -20,7 +20,7 @@ use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
 use world::{AllyRobot, EnnemyRobot, TeamColor, World};
 
-pub const CONTROL_PERIOD: Duration = Duration::from_millis(50);
+pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 const DETECTION_SCALING_FACTOR: f32 = 1000.;
 
 async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
@@ -85,20 +85,20 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
         //     pending_packets_count
         // );
 
-        println!("[DEBUG] world state");
-        println!(
-            "\tball pos: {:?}",
-            world.lock().unwrap().ball.get_reactive()
-        );
-        for r in world.lock().unwrap().team.values() {
-            println!(
-                "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
-                r.get_id(),
-                r.should_dribble(),
-                r.get_reactive(),
-                r.get_orientation()
-            );
-        }
+        // println!("[DEBUG] world state");
+        // println!(
+        //     "\tball pos: {:?}",
+        //     world.lock().unwrap().ball.get_reactive()
+        // );
+        // for r in world.lock().unwrap().team.values() {
+        //     println!(
+        //         "\trobot {} | is_dribbling: {} | pos: {:?} | orientation: {}",
+        //         r.get_id(),
+        //         r.should_dribble(),
+        //         r.get_reactive(),
+        //         r.get_orientation()
+        //     );
+        // }
 
         // ugly hack, could have been a `impl Iterator<Item &Robot>` if I was better at rust :/
         let robots = world
