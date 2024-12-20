@@ -147,7 +147,6 @@ impl<D: RobotData> Robot<D> {
             self.set_vel(
                 (detected_pos - self.get_pos()) * (1. / CONTROL_PERIOD.as_secs_f64()) as f32,
             );
-            dbg!(self.get_vel());
         }
         self.set_pos(detected_pos);
         let has_ball = {
@@ -297,29 +296,27 @@ impl Robot<AllyData> {
         }
 
         let is_colliding_with_ball = pos.distance_to(&world.lock().unwrap().ball) < 0.2;
-        return !is_colliding_with_a_robot && !dbg!(is_colliding_with_ball);
+        return !is_colliding_with_a_robot && !is_colliding_with_ball;
     }
 
-    // pub fn is_a_valid_trajectory(
-    //     &self,
-    //     traj: &CubicSpline<f32>,
-    //     world: &Arc<Mutex<World>>,
-    //     avoidance_mode: AvoidanceMode,
-    // ) -> bool {
-    //     const TIME_STEP: f32 = 200.; // 200ms as per tiger's tdp
-    //     for i in 0.. {
-    //         let p = match traj.position(i as f32 * TIME_STEP) {
-    //             Some(p) => Point2::from_vec(&p),
-    //             None => {
-    //                 return true;
-    //             }
-    //         };
-    //         if !self.is_free(p, world, avoidance_mode) {
-    //             return false;
-    //         }
-    //     }
-    //     true
-    // }
+    pub fn is_a_valid_trajectory(
+        &self,
+        traj: &impl Trajectory<Point2, Vec2>,
+        world: &Arc<Mutex<World>>,
+        avoidance_mode: AvoidanceMode,
+    ) -> bool {
+        const TIME_STEP: f64 = 0.200; // 200ms as per tiger's tdp
+        let n_points_to_check: usize = (traj.get_total_runtime() / TIME_STEP) as usize;
+        for i in 0..n_points_to_check {
+            let t = i as f64 * TIME_STEP;
+            let p = traj.get_position(t);
+            if !self.is_free(p, world, avoidance_mode) {
+                println!("collision at {}", t);
+                return false;
+            }
+        }
+        true
+    }
 
     pub async fn goto_rrt<T: Reactive<Point2>>(
         &self,
@@ -404,12 +401,12 @@ impl Robot<AllyData> {
             None => true,
         };
 
-        let mut followed_path = vec![self.get_reactive()];
-        while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
+        let mut followed_path = vec![self.get_pos()];
+        'traj: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             && is_angle_right()
         {
             println!("trying to go to dest");
-            let start = self.get_reactive();
+            let start = self.get_pos();
             let goal = destination.get_reactive();
             let field = world.lock().unwrap().field;
 
@@ -461,13 +458,17 @@ impl Robot<AllyData> {
                     while start.elapsed().as_secs_f64()
                         < traj.get_total_runtime() * if is_last_waypoint { 1. } else { 0.5 }
                     {
+                        if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+                            println!("detected collision on traj, generating a new path!");
+                            continue 'traj; // generate a new path
+                        }
                         let t = start.elapsed().as_secs_f64();
                         let v = self.pov_vec(traj.get_velocity(t));
                         let p = traj.get_position(t);
                         let p_diff = self.pov_vec(p - self.get_pos());
                         if p_diff.norm() > 0.5 {
                             println!("we fell off the traj!, trying again!");
-                            continue 'waypoint;
+                            continue 'waypoint; // generate a new traj from current pos to same waypoint
                         }
                         self.set_target_vel(v + p_diff * 0.5);
                         sleep(CONTROL_PERIOD).await;
