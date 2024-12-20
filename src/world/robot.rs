@@ -143,6 +143,12 @@ impl<D: RobotData> Robot<D> {
         );
         let detected_orientation = detection.orientation();
         self.set_orientation(detected_orientation);
+        if detected_pos != self.get_pos() {
+            self.set_vel(
+                (detected_pos - self.get_pos()) * (1. / CONTROL_PERIOD.as_secs_f64()) as f32,
+            );
+            dbg!(self.get_vel());
+        }
         self.set_pos(detected_pos);
         let has_ball = {
             let r_to_ball = self.to(ball);
@@ -421,6 +427,9 @@ impl Robot<AllyData> {
                 .skip(1)
                 .map(|p| Point2::from_vec(&p))
                 .collect();
+
+            // uncomment for straight line path testing (bang bang schedule testing)
+            // let path = vec![self.get_pos(), destination.get_reactive()];
             let path_len = path.len();
 
             println!(
@@ -429,22 +438,35 @@ impl Robot<AllyData> {
                 start_time.elapsed().as_millis()
             );
 
+            let mut last_p = path[0];
             for (i, p) in path.into_iter().enumerate() {
-                dbg!(&p);
-                'waypoint: for current_waypoint_retries in 0.. {
-                    println!("waypoint {} try {}!", i, current_waypoint_retries);
-                    let traj =
-                        BangBang2d::new(self.get_pos(), self.get_target_vel(), p, 5., 4., 0.01);
+                println!("going to waypoint {}", i);
+                'waypoint: loop {
+                    let is_last_waypoint = i == path_len - 1;
+                    // we put p further from the robot than it really is to make it go fast :)
+                    let virtual_p = if is_last_waypoint {
+                        p
+                    } else {
+                        p + last_p.to(p)
+                    };
+                    let traj = BangBang2d::new(
+                        self.get_pos(),
+                        self.get_vel(), // TODO: FIX THIS BY USING REAL VEL
+                        virtual_p,
+                        10.,
+                        3.,
+                        0.05,
+                    );
                     let start = Instant::now();
                     while start.elapsed().as_secs_f64()
-                        < traj.get_total_runtime() * if i == path_len - 1 { 1. } else { 0.4 }
+                        < traj.get_total_runtime() * if is_last_waypoint { 1. } else { 0.5 }
                     {
                         let t = start.elapsed().as_secs_f64();
                         let v = self.pov_vec(traj.get_velocity(t));
                         let p = traj.get_position(t);
                         let p_diff = self.pov_vec(p - self.get_pos());
                         if p_diff.norm() > 0.5 {
-                            println!("we fell off the traj!");
+                            println!("we fell off the traj!, trying again!");
                             continue 'waypoint;
                         }
                         self.set_target_vel(v + p_diff * 0.5);
@@ -452,8 +474,10 @@ impl Robot<AllyData> {
                     }
                     break; // we're done with this waypoint
                 }
+                last_p = p;
             }
         }
+        println!("arrived!");
         Ok(followed_path)
     }
 
