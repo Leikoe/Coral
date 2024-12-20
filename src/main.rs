@@ -35,9 +35,9 @@ async fn main() {
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
-    sleep(CONTROL_PERIOD * 3).await; // AWAIT ROBOTS DETECTION
+    sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
-    let r0 = world.lock().unwrap().team.get(&0).unwrap().clone();
+    let r0 = world.lock().unwrap().team.get(&3).unwrap().clone();
     let ball = world.lock().unwrap().ball.clone();
 
     // shoot(&world, &r0, &ball).await;
@@ -50,22 +50,32 @@ async fn main() {
     //     .expect("couldn't find a path");
 
     let goal = Point2::new(2., 0.);
-    // let _ = r0
-    //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
-    //     .await;
+    let _ = r0
+        .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
+        .await;
 
-    loop {
-        let traj = BangBang2d::new(Point2::zero(), Vec2::zero(), r0.pov(goal), 4., 9., 0.01);
-        let start = Instant::now();
-        while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
-            let t = start.elapsed().as_secs_f64();
-            let v = traj.get_velocity(t);
-            let p = traj.get_position(t);
-            r0.set_target_vel(dbg!(v + (p - Point2::zero()) * 0.05));
-            sleep(CONTROL_PERIOD).await;
-        }
-        r0.set_target_vel(Vec2::zero());
-    }
+    // for i in 0.. {
+    //     println!("new traj {}!", i);
+    //     let traj = BangBang2d::new(r0.get_pos(), Vec2::zero(), goal, 1., 2., 0.01);
+    //     let start = Instant::now();
+    //     while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
+    //         let t = start.elapsed().as_secs_f64();
+    //         let v = r0.pov_vec(traj.get_velocity(t));
+    //         let p = traj.get_position(t);
+    //         let p_diff = r0.pov_vec(p - r0.get_pos());
+    //         if p_diff.norm() > 0.5 {
+    //             println!("we fell off the traj!");
+    //             // break;
+    //         }
+    //         r0.set_target_vel(v + p_diff * 0.5);
+    //         sleep(CONTROL_PERIOD).await;
+    //     }
+    //     break;
+    // }
+
+    // loop {
+    //     r0.set_target_vel(Vec2::zero());
+    // }
 
     // let ennemy_goal = Point2::new(4.5, 0.);
     // for _ in 0..10 {

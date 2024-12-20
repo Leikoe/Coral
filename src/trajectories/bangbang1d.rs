@@ -47,7 +47,6 @@ impl BangBang1d {
         max_vel: f64,
         max_accel: f64,
     ) -> Self {
-        // assuming we are at zero acceleration
         let pos_at_zero_acc = pos_if_brake_until_zero_vel(initial_position, initial_vel, max_accel);
 
         if pos_at_zero_acc <= target_position {

@@ -54,7 +54,7 @@ impl BangBang2d {
             );
 
             let diff = (x.get_total_runtime() - y.get_total_runtime()).abs();
-            if (diff < accuracy) {
+            if diff < accuracy {
                 break;
             }
             if x.get_total_runtime() > y.get_total_runtime() {

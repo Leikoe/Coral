@@ -38,6 +38,7 @@ pub trait RobotData: Clone + Default {}
 pub struct Robot<D: RobotData> {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
+    vel: Arc<Mutex<Vec2>>,
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
     internal_data: D,
@@ -72,6 +73,7 @@ impl<D: RobotData> Robot<D> {
         Self {
             id,
             pos: Arc::new(Mutex::new(pos)),
+            vel: Arc::new(Mutex::new(Vec2::zero())),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
             internal_data: Default::default(),
@@ -111,9 +113,22 @@ impl<D: RobotData> Robot<D> {
         *orientation = angle;
     }
 
+    pub fn get_pos(&self) -> Point2 {
+        *self.pos.lock().unwrap()
+    }
+
     pub fn set_pos(&mut self, pos: Point2) {
         let mut _pos = self.pos.lock().unwrap();
         *_pos = pos;
+    }
+
+    pub fn get_vel(&self) -> Vec2 {
+        *self.vel.lock().unwrap()
+    }
+
+    pub fn set_vel(&mut self, vel: Vec2) {
+        let mut _vel = self.vel.lock().unwrap();
+        *_vel = vel;
     }
 
     pub fn set_orientation(&mut self, orientation: f32) {
@@ -150,6 +165,15 @@ impl<D: RobotData> Robot<D> {
         Point2::new(
             to_pos.x * inverse_orientation.cos() - to_pos.y * inverse_orientation.sin(),
             to_pos.y * inverse_orientation.cos() + to_pos.x * inverse_orientation.sin(),
+        )
+    }
+
+    pub fn pov_vec(&self, vel: Vec2) -> Vec2 {
+        let self_orientation = self.get_orientation();
+        let inverse_orientation = -self_orientation;
+        Vec2::new(
+            vel.x * inverse_orientation.cos() - vel.y * inverse_orientation.sin(),
+            vel.y * inverse_orientation.cos() + vel.x * inverse_orientation.sin(),
         )
     }
 }
@@ -378,6 +402,7 @@ impl Robot<AllyData> {
         while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             && is_angle_right()
         {
+            println!("trying to go to dest");
             let start = self.get_reactive();
             let goal = destination.get_reactive();
             let field = world.lock().unwrap().field;
@@ -394,28 +419,38 @@ impl Robot<AllyData> {
             let path: Vec<Point2> = path
                 .into_iter()
                 .skip(1)
-                .map(|p| self.pov(Point2::from_vec(&p)))
+                .map(|p| Point2::from_vec(&p))
                 .collect();
+            let path_len = path.len();
+
             println!(
                 "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
                 self.get_id(),
                 start_time.elapsed().as_millis()
             );
 
-            for p in path {
+            for (i, p) in path.into_iter().enumerate() {
                 dbg!(&p);
-                let current_trajectory =
-                    BangBang2d::new(Point2::zero(), self.get_target_vel(), p, 1., 2., 0.01);
-                let start = Instant::now();
-                let mut t = start.elapsed().as_secs_f64();
-                while t < current_trajectory.get_total_runtime() {
-                    let v = current_trajectory.get_acceleration(t);
-                    let p = current_trajectory.get_position(t); // for now assume that we returned above if it was done
-                    let p_diff = p - Point2::zero();
-                    self.set_target_vel(v + p_diff * 0.1);
-                    sleep(CONTROL_PERIOD).await;
-                    t = start.elapsed().as_secs_f64();
-                    followed_path.push(self.get_reactive());
+                'waypoint: for current_waypoint_retries in 0.. {
+                    println!("waypoint {} try {}!", i, current_waypoint_retries);
+                    let traj =
+                        BangBang2d::new(self.get_pos(), self.get_target_vel(), p, 5., 4., 0.01);
+                    let start = Instant::now();
+                    while start.elapsed().as_secs_f64()
+                        < traj.get_total_runtime() * if i == path_len - 1 { 1. } else { 0.4 }
+                    {
+                        let t = start.elapsed().as_secs_f64();
+                        let v = self.pov_vec(traj.get_velocity(t));
+                        let p = traj.get_position(t);
+                        let p_diff = self.pov_vec(p - self.get_pos());
+                        if p_diff.norm() > 0.5 {
+                            println!("we fell off the traj!");
+                            continue 'waypoint;
+                        }
+                        self.set_target_vel(v + p_diff * 0.5);
+                        sleep(CONTROL_PERIOD).await;
+                    }
+                    break; // we're done with this waypoint
                 }
             }
         }
