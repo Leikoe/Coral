@@ -78,7 +78,6 @@ pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ba
             AvoidanceMode::AvoidRobots,
         )
         .await;
-    sleep(Duration::from_millis(500)).await;
     robot.disable_dribbler();
     sleep(Duration::from_millis(500)).await;
 
