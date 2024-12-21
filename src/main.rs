@@ -23,13 +23,16 @@ use tokio::time::sleep;
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
-    let world = Arc::new(Mutex::new(World {
+    let world = World {
         // TODO: don't assume field dims
-        field: Rect::new(Point2::new(-4.5, 3.), Point2::new(4.5, -3.)),
-        ball: Ball::new(Point2::new(-0.6, -0.2), Vec2::new(0.4, 0.4)),
-        team: HashMap::new(),
-        ennemies: HashMap::new(),
-    }));
+        field: Arc::new(Mutex::new(Rect::new(
+            Point2::new(-4.5, 3.),
+            Point2::new(4.5, -3.),
+        ))),
+        ball: Ball::default(),
+        team: Default::default(),
+        ennemies: Default::default(),
+    };
 
     let color = TeamColor::Blue;
     let controller = SimRobotController::new(color).await;
@@ -37,8 +40,8 @@ async fn main() {
         launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
-    let r0 = world.lock().unwrap().team.get(&3).unwrap().clone();
-    let ball = world.lock().unwrap().ball.clone();
+    let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();
+    let ball = world.ball.clone();
 
     // shoot(&world, &r0, &ball).await;
 

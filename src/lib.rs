@@ -24,7 +24,7 @@ pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 const DETECTION_SCALING_FACTOR: f32 = 1000.;
 
 async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
-    world: Arc<Mutex<World>>,
+    world: World,
     mut vision: Vision,
     side: TeamColor,
     mut interval: Interval,
@@ -35,8 +35,9 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                                // let mut pending_packets_count = 0;
         let pending_packets_iterator = vision.take_pending_packets().await;
         {
-            let mut w = world.lock().unwrap();
-            let ball = w.ball.clone();
+            let mut ally_team = world.team.lock().unwrap();
+            let mut ennemy_team = world.ennemies.lock().unwrap();
+            let ball = world.ball.clone();
             for packet in pending_packets_iterator {
                 if let Some(detection) = packet.detection {
                     if let Some(ball_detection) = detection.balls.get(0) {
@@ -53,25 +54,25 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                     };
                     for ally_detection in allies {
                         let rid = ally_detection.robot_id() as u8;
-                        if w.team.get_mut(&rid).is_none() {
+                        if ally_team.get_mut(&rid).is_none() {
                             println!("[DEBUG] added ally {} to the team!", rid);
                             let r = AllyRobot::default_with_id(rid);
-                            w.team.insert(rid, r);
+                            ally_team.insert(rid, r);
                         }
                         // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                        let r = w.team.get_mut(&rid).unwrap();
+                        let r = ally_team.get_mut(&rid).unwrap();
                         r.update_from_packet(ally_detection, &ball);
                     }
 
                     for ennemy_detection in ennemies {
                         let rid = ennemy_detection.robot_id() as u8;
-                        if w.ennemies.get_mut(&rid).is_none() {
+                        if ennemy_team.get_mut(&rid).is_none() {
                             println!("[DEBUG] added ennemy {} to the ennemies!", rid);
                             let r = EnnemyRobot::default_with_id(rid);
-                            w.ennemies.insert(rid, r);
+                            ennemy_team.insert(rid, r);
                         }
                         // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                        let r = w.ennemies.get_mut(&rid).unwrap();
+                        let r = ennemy_team.get_mut(&rid).unwrap();
                         r.update_from_packet(ennemy_detection, &ball);
                     }
                 }
@@ -102,9 +103,9 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
 
         // ugly hack, could have been a `impl Iterator<Item &Robot>` if I was better at rust :/
         let robots = world
+            .team
             .lock()
             .unwrap()
-            .team
             .values()
             .map(|r| r.clone())
             .collect::<Vec<AllyRobot>>();
@@ -116,7 +117,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
 }
 
 pub fn launch_control_thread<T, E: Debug>(
-    world: Arc<Mutex<World>>,
+    world: World,
     vision_address: &'static str, // the vision ip string stays valid for the whole app's duration
     vision_port: Option<u16>,
     real: bool,

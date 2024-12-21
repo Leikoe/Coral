@@ -266,27 +266,22 @@ impl Robot<AllyData> {
         followed_path
     }
 
-    fn is_free(
-        &self,
-        pos: Point2,
-        world: &Arc<Mutex<World>>,
-        avoidance_mode: AvoidanceMode,
-    ) -> bool {
+    fn is_free(&self, pos: Point2, world: &World, avoidance_mode: AvoidanceMode) -> bool {
         if let AvoidanceMode::None = avoidance_mode {
             return true;
         }
 
         let is_colliding_with_allies = world
+            .team
             .lock()
             .unwrap()
-            .team
             .values()
             .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
             .any(|r| r.collides_with_robot(pos));
         let is_colliding_with_ennemies = world
+            .ennemies
             .lock()
             .unwrap()
-            .ennemies
             .values()
             .any(|r| r.collides_with_robot(pos));
 
@@ -295,14 +290,14 @@ impl Robot<AllyData> {
             return !is_colliding_with_a_robot;
         }
 
-        let is_colliding_with_ball = pos.distance_to(&world.lock().unwrap().ball) < 0.2;
+        let is_colliding_with_ball = pos.distance_to(&world.ball) < 0.2;
         return !is_colliding_with_a_robot && !is_colliding_with_ball;
     }
 
     pub fn is_a_valid_trajectory(
         &self,
         traj: &impl Trajectory<Point2, Vec2>,
-        world: &Arc<Mutex<World>>,
+        world: &World,
         avoidance_mode: AvoidanceMode,
     ) -> bool {
         const TIME_STEP: f64 = 0.200; // 200ms as per tiger's tdp
@@ -320,7 +315,7 @@ impl Robot<AllyData> {
 
     pub async fn goto_rrt<T: Reactive<Point2>>(
         &self,
-        world: &Arc<Mutex<World>>,
+        world: &World,
         destination: &T,
         angle: Option<f32>,
         avoidance_mode: AvoidanceMode,
@@ -345,9 +340,7 @@ impl Robot<AllyData> {
         {
             let start = Point2::zero();
             let goal = self.pov(destination.get_reactive());
-
-            // let rect = Rect::new(Point2::new(start.x, 1.75), Point2::new(goal.x, -1.75));
-            let rect = world.lock().unwrap().field;
+            let rect = *world.field.lock().unwrap(); // assume that the field won't change size during this path generation
 
             let start_time = tokio::time::Instant::now();
             let mut path = rrt::dual_rrt_connect(
@@ -382,7 +375,7 @@ impl Robot<AllyData> {
 
     pub async fn goto_traj<T: Reactive<Point2>>(
         &self,
-        world: &Arc<Mutex<World>>,
+        world: &World,
         destination: &T,
         angle: Option<f32>,
         avoidance_mode: AvoidanceMode,
@@ -408,7 +401,7 @@ impl Robot<AllyData> {
             println!("trying to go to dest");
             let start = self.get_pos();
             let goal = destination.get_reactive();
-            let field = world.lock().unwrap().field;
+            let field = world.field.lock().unwrap(); // assume that the field won't change size during this path generation
 
             let start_time = Instant::now();
             let path = rrt::dual_rrt_connect(

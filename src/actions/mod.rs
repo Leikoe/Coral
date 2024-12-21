@@ -11,7 +11,7 @@ use crate::{
 use tokio::{join, select, time::sleep};
 
 pub async fn shoot<T: Reactive<Point2> + Clone>(
-    world: &Arc<Mutex<World>>,
+    world: &World,
     robot: &AllyRobot,
     ball: &Ball,
     goal: &T,
@@ -56,10 +56,9 @@ pub async fn do_square(robot: &AllyRobot) {
     println!("reached dest!");
 }
 
-pub async fn do_square_rrt(
-    world: &Arc<Mutex<World>>,
-    robot: &AllyRobot,
-) -> Result<Vec<Point2>, String> {
+pub async fn place_ball(robot: &AllyRobot, ball: &Ball, target_ball_pos: &Point2) {}
+
+pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<Vec<Point2>, String> {
     let poses = vec![
         Point2::new(-1., 1.),
         Point2::new(1., 1.),

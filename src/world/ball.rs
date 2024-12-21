@@ -1,7 +1,7 @@
 use crate::math::{Point2, Reactive, Vec2};
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Ball {
     pos: Arc<Mutex<Point2>>,
     vel: Arc<Mutex<Vec2>>,

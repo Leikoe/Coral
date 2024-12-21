@@ -6,7 +6,10 @@ pub use ball::Ball;
 pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId};
 
 use crate::math::Rect;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TeamColor {
@@ -16,8 +19,8 @@ pub enum TeamColor {
 
 #[derive(Clone)]
 pub struct World {
-    pub field: Rect,
-    pub ball: Ball,
-    pub team: HashMap<RobotId, AllyRobot>,
-    pub ennemies: HashMap<RobotId, EnnemyRobot>,
+    pub field: Arc<Mutex<Rect>>,
+    pub ball: Ball, // already has light cloning because internal arcs
+    pub team: Arc<Mutex<HashMap<RobotId, AllyRobot>>>,
+    pub ennemies: Arc<Mutex<HashMap<RobotId, EnnemyRobot>>>,
 }
