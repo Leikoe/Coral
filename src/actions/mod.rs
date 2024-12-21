@@ -56,7 +56,42 @@ pub async fn do_square(robot: &AllyRobot) {
     println!("reached dest!");
 }
 
-pub async fn place_ball(robot: &AllyRobot, ball: &Ball, target_ball_pos: &Point2) {}
+pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ball_pos: &Point2) {
+    robot.enable_dribbler();
+    let angle = robot.to(ball).angle();
+    select! {
+        _ = robot
+            .goto_traj(
+                world,
+                ball,
+                Some(angle),
+                AvoidanceMode::AvoidRobots,
+            ) => {}
+        _ = robot.wait_until_has_ball() => {}
+    };
+    // go put the ball down
+    let _ = robot
+        .goto_traj(
+            world,
+            &(*target_ball_pos - robot.to(ball).get_reactive()),
+            Some(angle),
+            AvoidanceMode::AvoidRobots,
+        )
+        .await;
+    sleep(Duration::from_millis(500)).await;
+    robot.disable_dribbler();
+    sleep(Duration::from_millis(500)).await;
+
+    // step away
+    let _ = robot
+        .goto_traj(
+            world,
+            &(*target_ball_pos - robot.to(ball).get_reactive() * 4.),
+            Some(angle),
+            AvoidanceMode::AvoidRobots,
+        )
+        .await;
+}
 
 pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<Vec<Point2>, String> {
     let poses = vec![

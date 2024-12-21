@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::shoot,
+    actions::{place_ball, shoot},
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
     math::{Point2, Reactive, Rect, Vec2},
@@ -53,6 +53,11 @@ async fn main() {
     //     .expect("couldn't find a path");
 
     let goal = Point2::new(2., 0.);
+    // let _ = r0
+    //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
+    //     .await;
+
+    place_ball(&world, &r0, &ball, &Point2::zero()).await;
     let _ = r0
         .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
         .await;

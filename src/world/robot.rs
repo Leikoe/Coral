@@ -464,6 +464,13 @@ impl Robot<AllyData> {
                             continue 'waypoint; // generate a new traj from current pos to same waypoint
                         }
                         self.set_target_vel(v + p_diff * 0.5);
+                        if let Some(angle) = angle {
+                            self.set_target_angular_vel(
+                                angle_difference(angle as f64, self.get_orientation() as f64)
+                                    as f32
+                                    * GOTO_ANGULAR_SPEED,
+                            );
+                        }
                         sleep(CONTROL_PERIOD).await;
                     }
                     break; // we're done with this waypoint
