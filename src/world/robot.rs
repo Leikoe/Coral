@@ -1,4 +1,4 @@
-use tokio::time::sleep;
+use tokio::{select, time::sleep};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
@@ -403,6 +403,35 @@ impl Robot<AllyData> {
             let goal = destination.get_reactive();
             let field = world.field.lock().unwrap(); // assume that the field won't change size during this path generation
 
+            let traj = BangBang2d::new(start, self.get_vel(), goal, 4., 3., 0.1);
+            if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+                println!("TRAJ WAS VALID, GOING FASSSTTTTT!");
+                let start = Instant::now();
+                while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
+                    if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+                        println!("detected collision on traj, generating a new path!");
+                        continue 'traj; // generate a new path
+                    }
+                    let t = start.elapsed().as_secs_f64();
+                    let v = self.pov_vec(traj.get_velocity(t));
+                    let p = traj.get_position(t);
+                    let p_diff = self.pov_vec(p - self.get_pos());
+                    if p_diff.norm() > 0.5 {
+                        println!("we fell off the traj!, trying again!");
+                        break;
+                    }
+                    self.set_target_vel(v + p_diff * 0.5);
+                    if let Some(angle) = angle {
+                        self.set_target_angular_vel(
+                            angle_difference(angle as f64, self.get_orientation() as f64) as f32
+                                * GOTO_ANGULAR_SPEED,
+                        );
+                    }
+                    sleep(CONTROL_PERIOD).await;
+                }
+                continue;
+            }
+
             let start_time = Instant::now();
             let path = rrt::dual_rrt_connect(
                 &[start.x, start.y],
@@ -487,6 +516,23 @@ impl Robot<AllyData> {
         while !self.has_ball() {
             interval.tick().await;
         }
+    }
+
+    // after this call you should have the ball in your spinning dribbler
+    pub async fn go_get_ball(&self, world: &World, ball: &Ball) {
+        self.enable_dribbler();
+        let angle = self.to(ball).angle();
+        select! {
+            _ = self
+                .goto_traj(
+                    world,
+                    ball,
+                    Some(angle),
+                    AvoidanceMode::AvoidRobots,
+                ) => {}
+            _ = self.wait_until_has_ball() => {}
+        };
+        sleep(Duration::from_millis(200)).await;
     }
 
     // what can you wait for a robot to do ?
