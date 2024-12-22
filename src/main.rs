@@ -10,11 +10,115 @@ use crabe_async::{
 use std::time::Duration;
 use tokio::{join, select, time::sleep};
 
+enum HaltedState {
+    Halt,
+    Timeout,
+}
+
+enum StoppedState {
+    Stop,
+    PrepareKickoff,
+    BallPlacement,
+    PreparePenalty,
+}
+
+enum RunningState {
+    Kickoff,
+    FreeKick,
+    Penalty,
+    Run,
+}
+
+enum GameState {
+    HaltedState(HaltedState),
+    StoppedState(StoppedState),
+    RunningState(RunningState),
+}
+
+impl GameState {
+    pub fn update(self, event: GameEvent) -> Self {
+        match (self, event) {
+            // (from any state) Halt -> Halt
+            (_, GameEvent::Halt) => GameState::HaltedState(HaltedState::Halt),
+            // Halted
+            (GameState::HaltedState(HaltedState::Timeout), GameEvent::Stop) => {
+                GameState::StoppedState(StoppedState::Stop)
+            }
+            (GameState::StoppedState(StoppedState::Stop), GameEvent::Timeout) => {
+                GameState::HaltedState(HaltedState::Timeout)
+            }
+            // Stopped
+            (GameState::StoppedState(StoppedState::Stop), GameEvent::PrepareKickoff) => {
+                GameState::StoppedState(StoppedState::PrepareKickoff)
+            }
+            (GameState::StoppedState(StoppedState::Stop), GameEvent::BallPlacement) => {
+                GameState::StoppedState(StoppedState::BallPlacement)
+            }
+            (GameState::StoppedState(StoppedState::Stop), GameEvent::PreparePenalty) => {
+                GameState::StoppedState(StoppedState::PreparePenalty)
+            }
+            (GameState::StoppedState(StoppedState::Stop), GameEvent::FreeKick) => {
+                GameState::RunningState(RunningState::FreeKick)
+            }
+            (GameState::StoppedState(StoppedState::Stop), GameEvent::ForceStart) => {
+                GameState::RunningState(RunningState::Run)
+            }
+            (GameState::StoppedState(StoppedState::PrepareKickoff), GameEvent::NormalStart) => {
+                GameState::RunningState(RunningState::Kickoff)
+            }
+            (GameState::StoppedState(StoppedState::BallPlacement), GameEvent::Stop) => {
+                GameState::StoppedState(StoppedState::Stop)
+            }
+            (GameState::StoppedState(StoppedState::BallPlacement), GameEvent::Continue) => {
+                GameState::RunningState(RunningState::FreeKick)
+            }
+            (GameState::StoppedState(StoppedState::PreparePenalty), GameEvent::NormalStart) => {
+                GameState::RunningState(RunningState::Penalty)
+            }
+            // Running
+            // TODO: fix the AfterXSeconds(_)
+            (
+                GameState::RunningState(RunningState::Kickoff),
+                GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
+            ) => GameState::RunningState(RunningState::Run),
+            (
+                GameState::RunningState(RunningState::FreeKick),
+                GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
+            ) => GameState::RunningState(RunningState::Run),
+            (GameState::RunningState(RunningState::Run), GameEvent::Stop) => {
+                GameState::StoppedState(StoppedState::Stop)
+            }
+
+            _ => {
+                println!("[ERROR] unexpected game state and event combination");
+                unreachable!();
+            }
+        }
+    }
+}
+
+enum GameEvent {
+    Halt,
+    Stop,
+    Timeout,
+    PrepareKickoff,
+    BallPlacement,
+    PreparePenalty,
+    NormalStart,
+    Continue,
+    ForceStart,
+    FreeKick,
+    BallMoved,
+    AfterXSeconds(u64),
+}
+
 async fn play(world: World, mut gc: GameController) {
     let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();
     let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
     let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
     let ball = world.ball.clone();
+
+    let state = GameState::HaltedState(HaltedState::Halt);
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     loop {
