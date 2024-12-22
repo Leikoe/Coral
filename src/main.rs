@@ -10,7 +10,7 @@ use crabe_async::{
 use std::time::Duration;
 use tokio::{join, select, time::sleep};
 
-async fn play(world: World) {
+async fn play(world: World, mut gc: GameController) {
     let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();
     let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
     let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
@@ -18,6 +18,11 @@ async fn play(world: World) {
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     loop {
+        let gc_pending_packets = gc.take_pending_packets().await;
+        if let Some(p) = gc_pending_packets.last() {
+            dbg!(p);
+        }
+
         interval.tick().await; // YIELD
         let _ = r0
             .goto(&world, &Point2::zero(), None, AvoidanceMode::AvoidRobots)
@@ -38,7 +43,7 @@ async fn main() {
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
     select! {
-        _ = play(world) => {}
+        _ = play(world, gc) => {}
         _ = tokio::signal::ctrl_c() => {
             println!("detected ctrl-c, stopping now!");
         }
