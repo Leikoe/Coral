@@ -27,4 +27,11 @@ impl Rect {
             Uniform::new(self.bottom_right.y, self.top_left.y).sample(&mut rng),
         )
     }
+
+    pub fn center(&self) -> Point2 {
+        Point2::new(
+            (self.top_left.x + self.bottom_right.x) / 2.,
+            (self.top_left.y + self.bottom_right.y) / 2.,
+        )
+    }
 }

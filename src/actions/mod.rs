@@ -10,13 +10,9 @@ use crate::{
 };
 use tokio::{join, select, time::sleep};
 
-pub async fn strike_alone<T: Reactive<Point2> + Clone>(
-    world: &World,
-    robot: &AllyRobot,
-    ball: &Ball,
-    goal: &T,
-) {
-    let ball_to_goal = ball.to(goal);
+pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
+    let goal = world.get_ennemy_goal_bounding_box().center();
+    let ball_to_goal = ball.to(&goal);
     let ball_to_behind_ball = ball_to_goal.normalized().mul(-0.3);
 
     let behind_ball = ball.plus(ball_to_behind_ball);
@@ -107,7 +103,7 @@ pub async fn three_attackers_attack(
     fronter: &AllyRobot,
     right_winger: &AllyRobot,
 ) {
-    let goal = Point2::new(4.5, 0.);
+    let goal = world.get_ennemy_goal_bounding_box().center();
     let (p1, p2, p3) = (
         Point2::new(2.0, 2.),
         Point2::new(0.5, 0.),

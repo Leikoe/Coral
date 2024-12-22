@@ -39,6 +39,13 @@ impl World {
             ennemies: Default::default(),
         }
     }
+
+    pub fn get_ennemy_goal_bounding_box(&self) -> Rect {
+        match self.team_color {
+            TeamColor::Blue => self.field.get_yellow_goal_bounding_box(),
+            TeamColor::Yellow => self.field.get_blue_goal_bounding_box(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -47,6 +54,10 @@ pub struct Field {
     field_length: Arc<Mutex<f64>>,
     /// field's width in meters
     field_width: Arc<Mutex<f64>>,
+    // /// Goal width (distance between inner edges of goal posts) in m
+    goal_width: Arc<Mutex<f64>>,
+    /// Goal depth (distance from outer goal line edge to inner goal back) in m
+    goal_depth: Arc<Mutex<f64>>,
 }
 
 impl Default for Field {
@@ -55,6 +66,8 @@ impl Default for Field {
         Field {
             field_length: Arc::new(Mutex::new(9.)),
             field_width: Arc::new(Mutex::new(6.)),
+            goal_width: Arc::new(Mutex::new(1.)),
+            goal_depth: Arc::new(Mutex::new(0.18)),
         }
     }
 }
@@ -73,6 +86,14 @@ impl Field {
         *self.field_width.lock().unwrap()
     }
 
+    pub fn get_goal_depth(&self) -> f64 {
+        *self.goal_depth.lock().unwrap()
+    }
+
+    pub fn get_goal_width(&self) -> f64 {
+        *self.goal_width.lock().unwrap()
+    }
+
     pub fn get_bounding_box(&self) -> Rect {
         Rect::new(
             Point2::new(
@@ -83,6 +104,28 @@ impl Field {
                 (-self.get_field_width() / 2.0) as f32,
                 (self.get_field_length() / 2.0) as f32,
             ),
+        )
+    }
+
+    pub fn get_yellow_goal_bounding_box(&self) -> Rect {
+        let x_outer_line = self.get_field_length() / 2.;
+        Rect::new(
+            Point2::new(x_outer_line as f32, (self.get_goal_width() / 2.) as f32),
+            Point2::new(
+                (x_outer_line + self.get_goal_depth()) as f32,
+                (-self.get_goal_width() / 2.) as f32,
+            ),
+        )
+    }
+
+    pub fn get_blue_goal_bounding_box(&self) -> Rect {
+        let x_outer_line = -self.get_field_length() / 2.;
+        Rect::new(
+            Point2::new(
+                (x_outer_line - self.get_goal_depth()) as f32,
+                (self.get_goal_width() / 2.) as f32,
+            ),
+            Point2::new(x_outer_line as f32, (-self.get_goal_width() / 2.) as f32),
         )
     }
 }
