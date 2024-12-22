@@ -16,7 +16,7 @@ async fn main() {
     let world = World::default_with_team_color(color);
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
-        launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
+        launch_control_thread(world.clone(), None, None, false, color, controller);
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
     let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();

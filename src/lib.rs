@@ -1,6 +1,7 @@
 #[allow(async_fn_in_trait)]
 pub mod actions;
 pub mod controllers;
+pub mod gc;
 pub mod league_protocols;
 pub mod math;
 pub mod net;
@@ -8,14 +9,10 @@ pub mod trajectories;
 pub mod vision;
 pub mod world;
 
-use std::{
-    fmt::Debug,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{fmt::Debug, net::Ipv4Addr, sync::Arc, time::Duration};
 
 use controllers::RobotController;
-use math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext};
+use math::Point2;
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
 use world::{AllyRobot, EnnemyRobot, TeamColor, World};
@@ -120,8 +117,8 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
 
 pub fn launch_control_thread<T, E: Debug>(
     world: World,
-    vision_address: &'static str, // the vision ip string stays valid for the whole app's duration
-    vision_port: Option<u16>,
+    custom_vision_ip: Option<Ipv4Addr>, // the vision ip string stays valid for the whole app's duration
+    custom_vision_port: Option<u16>,
     real: bool,
     side: TeamColor,
     mut controller: impl RobotController<T, E> + Send + 'static,
@@ -130,9 +127,8 @@ pub fn launch_control_thread<T, E: Debug>(
     let notifier_clone = notifier.clone();
     let interval = tokio::time::interval(CONTROL_PERIOD);
     let handle = tokio::spawn(async move {
-        let vision = Vision::new(vision_address, vision_port, real);
+        let vision = Vision::new(custom_vision_ip, custom_vision_port, real);
 
-        // Robot control loop, 1Hz
         select! {
             _ = control_loop(world, vision, side, interval, &mut controller) => {}
             _ = notifier_clone.notified() => {}

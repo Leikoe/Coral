@@ -1,12 +1,12 @@
 use crate::league_protocols::vision_packet::SslWrapperPacket;
 use crate::net::multicast_receiver::MulticastUdpReceiver;
 use std::net::Ipv4Addr;
-use std::str::FromStr;
 use std::time::Duration;
 
-const VISION_PORT_REAL: u16 = 10006;
-const VISION_PORT_SIM: u16 = 10020;
-const RECEIVE_TIMEOUT: Duration = Duration::from_millis(5);
+const DEFAULT_VISION_IP: Ipv4Addr = Ipv4Addr::new(224, 5, 23, 2);
+const DEFAULT_VISION_PORT_REAL: u16 = 10006;
+const DEFAULT_VISION_PORT_SIM: u16 = 10020;
+const RECEIVE_TIMEOUT: Duration = Duration::from_millis(10);
 
 // TODO: Document
 pub struct Vision {
@@ -14,20 +14,26 @@ pub struct Vision {
 }
 
 impl Vision {
-    pub fn new(vision_ip: &str, vision_port: Option<u16>, real: bool) -> Self {
-        let port = if let Some(port) = vision_port {
-            port
-        } else if real {
-            VISION_PORT_REAL
-        } else {
-            VISION_PORT_SIM
+    pub fn new(
+        custom_vision_ip: Option<Ipv4Addr>,
+        custom_vision_port: Option<u16>,
+        real: bool,
+    ) -> Self {
+        let vision_ip = match custom_vision_ip {
+            Some(custom_vision_ip) => custom_vision_ip,
+            None => DEFAULT_VISION_IP,
         };
 
-        let ipv4 =
-            Ipv4Addr::from_str(vision_ip).expect("Failed to create an ipv4 address with the ip");
+        let port = if let Some(port) = custom_vision_port {
+            port
+        } else if real {
+            DEFAULT_VISION_PORT_REAL
+        } else {
+            DEFAULT_VISION_PORT_SIM
+        };
 
         Self {
-            socket: MulticastUdpReceiver::new(ipv4, port)
+            socket: MulticastUdpReceiver::new(vision_ip, port)
                 .expect("Failed to create vision receiver"),
         }
     }
