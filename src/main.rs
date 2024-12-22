@@ -17,17 +17,7 @@ use tokio::{join, time::sleep};
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
-    let world = World {
-        // TODO: don't assume field dims
-        field: Arc::new(Mutex::new(Rect::new(
-            Point2::new(-4.5, 3.),
-            Point2::new(4.5, -3.),
-        ))),
-        ball: Ball::default(),
-        team: Default::default(),
-        ennemies: Default::default(),
-    };
-
+    let world = World::default();
     let color = TeamColor::Blue;
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =

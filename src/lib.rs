@@ -24,7 +24,7 @@ pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 const DETECTION_SCALING_FACTOR: f32 = 1000.;
 
 async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
-    world: World,
+    mut world: World,
     mut vision: Vision,
     side: TeamColor,
     mut interval: Interval,
@@ -76,7 +76,9 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         r.update_from_packet(ennemy_detection, &ball);
                     }
                 }
-
+                if let Some(geometry) = packet.geometry {
+                    world.field.update_from_packet(geometry.field);
+                }
                 // pending_packets_count += 1;
             }
         }

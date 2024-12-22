@@ -308,7 +308,7 @@ impl Robot<AllyData> {
             println!("[robot{}] trying to go to dest", self.get_id());
             let start = self.get_pos();
             let goal = destination.get_reactive();
-            let field = *world.field.lock().unwrap(); // assume that the field won't change size during this path generation
+            let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
             let traj = BangBang2d::new(start, Vec2::zero(), goal, 5., 3., 0.1);
             if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
