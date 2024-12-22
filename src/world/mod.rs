@@ -20,12 +20,25 @@ pub enum TeamColor {
     Yellow,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct World {
+    pub team_color: TeamColor,
     pub field: Field, // already has light cloning because internal arcs
     pub ball: Ball,   // already has light cloning because internal arcs
     pub team: Arc<Mutex<HashMap<RobotId, AllyRobot>>>,
     pub ennemies: Arc<Mutex<HashMap<RobotId, EnnemyRobot>>>,
+}
+
+impl World {
+    pub fn default_with_team_color(team_color: TeamColor) -> Self {
+        Self {
+            team_color,
+            field: Field::default(),
+            ball: Ball::default(),
+            team: Default::default(),
+            ennemies: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone)]

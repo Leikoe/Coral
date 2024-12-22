@@ -1,24 +1,19 @@
 use crabe_async::{
-    actions::{place_ball, strike_alone, three_attackers_attack},
+    actions::three_attackers_attack,
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
-    math::{Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Rect, Vec2},
-    trajectories::{bangbang2d::BangBang2d, Trajectory},
-    world::{AvoidanceMode, Ball, TeamColor, World},
+    math::Point2,
+    world::{AvoidanceMode, TeamColor, World},
     CONTROL_PERIOD,
 };
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
+use std::time::Duration;
 use tokio::{join, time::sleep};
 
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
-    let world = World::default();
     let color = TeamColor::Blue;
+    let world = World::default_with_team_color(color);
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), "224.5.23.2", None, false, color, controller);
