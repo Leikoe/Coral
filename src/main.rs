@@ -30,63 +30,63 @@ enum RunningState {
 }
 
 enum GameState {
-    HaltedState(HaltedState),
-    StoppedState(StoppedState),
-    RunningState(RunningState),
+    Halted(HaltedState),
+    Stopped(StoppedState),
+    Running(RunningState),
 }
 
 impl GameState {
     pub fn update(self, event: GameEvent) -> Self {
         match (self, event) {
             // (from any state) Halt -> Halt
-            (_, GameEvent::Halt) => GameState::HaltedState(HaltedState::Halt),
+            (_, GameEvent::Halt) => GameState::Halted(HaltedState::Halt),
             // Halted
-            (GameState::HaltedState(HaltedState::Timeout), GameEvent::Stop) => {
-                GameState::StoppedState(StoppedState::Stop)
+            (GameState::Halted(HaltedState::Timeout), GameEvent::Stop) => {
+                GameState::Stopped(StoppedState::Stop)
             }
-            (GameState::StoppedState(StoppedState::Stop), GameEvent::Timeout) => {
-                GameState::HaltedState(HaltedState::Timeout)
+            (GameState::Stopped(StoppedState::Stop), GameEvent::Timeout) => {
+                GameState::Halted(HaltedState::Timeout)
             }
             // Stopped
-            (GameState::StoppedState(StoppedState::Stop), GameEvent::PrepareKickoff) => {
-                GameState::StoppedState(StoppedState::PrepareKickoff)
+            (GameState::Stopped(StoppedState::Stop), GameEvent::PrepareKickoff) => {
+                GameState::Stopped(StoppedState::PrepareKickoff)
             }
-            (GameState::StoppedState(StoppedState::Stop), GameEvent::BallPlacement) => {
-                GameState::StoppedState(StoppedState::BallPlacement)
+            (GameState::Stopped(StoppedState::Stop), GameEvent::BallPlacement) => {
+                GameState::Stopped(StoppedState::BallPlacement)
             }
-            (GameState::StoppedState(StoppedState::Stop), GameEvent::PreparePenalty) => {
-                GameState::StoppedState(StoppedState::PreparePenalty)
+            (GameState::Stopped(StoppedState::Stop), GameEvent::PreparePenalty) => {
+                GameState::Stopped(StoppedState::PreparePenalty)
             }
-            (GameState::StoppedState(StoppedState::Stop), GameEvent::FreeKick) => {
-                GameState::RunningState(RunningState::FreeKick)
+            (GameState::Stopped(StoppedState::Stop), GameEvent::FreeKick) => {
+                GameState::Running(RunningState::FreeKick)
             }
-            (GameState::StoppedState(StoppedState::Stop), GameEvent::ForceStart) => {
-                GameState::RunningState(RunningState::Run)
+            (GameState::Stopped(StoppedState::Stop), GameEvent::ForceStart) => {
+                GameState::Running(RunningState::Run)
             }
-            (GameState::StoppedState(StoppedState::PrepareKickoff), GameEvent::NormalStart) => {
-                GameState::RunningState(RunningState::Kickoff)
+            (GameState::Stopped(StoppedState::PrepareKickoff), GameEvent::NormalStart) => {
+                GameState::Running(RunningState::Kickoff)
             }
-            (GameState::StoppedState(StoppedState::BallPlacement), GameEvent::Stop) => {
-                GameState::StoppedState(StoppedState::Stop)
+            (GameState::Stopped(StoppedState::BallPlacement), GameEvent::Stop) => {
+                GameState::Stopped(StoppedState::Stop)
             }
-            (GameState::StoppedState(StoppedState::BallPlacement), GameEvent::Continue) => {
-                GameState::RunningState(RunningState::FreeKick)
+            (GameState::Stopped(StoppedState::BallPlacement), GameEvent::Continue) => {
+                GameState::Running(RunningState::FreeKick)
             }
-            (GameState::StoppedState(StoppedState::PreparePenalty), GameEvent::NormalStart) => {
-                GameState::RunningState(RunningState::Penalty)
+            (GameState::Stopped(StoppedState::PreparePenalty), GameEvent::NormalStart) => {
+                GameState::Running(RunningState::Penalty)
             }
             // Running
             // TODO: fix the AfterXSeconds(_)
             (
-                GameState::RunningState(RunningState::Kickoff),
+                GameState::Running(RunningState::Kickoff),
                 GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
-            ) => GameState::RunningState(RunningState::Run),
+            ) => GameState::Running(RunningState::Run),
             (
-                GameState::RunningState(RunningState::FreeKick),
+                GameState::Running(RunningState::FreeKick),
                 GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
-            ) => GameState::RunningState(RunningState::Run),
-            (GameState::RunningState(RunningState::Run), GameEvent::Stop) => {
-                GameState::StoppedState(StoppedState::Stop)
+            ) => GameState::Running(RunningState::Run),
+            (GameState::Running(RunningState::Run), GameEvent::Stop) => {
+                GameState::Stopped(StoppedState::Stop)
             }
 
             _ => {
@@ -118,7 +118,7 @@ async fn play(world: World, mut gc: GameController) {
     let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
     let ball = world.ball.clone();
 
-    let state = GameState::HaltedState(HaltedState::Halt);
+    let state = GameState::Halted(HaltedState::Halt);
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     loop {
