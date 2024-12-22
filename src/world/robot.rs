@@ -306,7 +306,7 @@ impl Robot<AllyData> {
             let t = i as f64 * TIME_STEP;
             let p = traj.get_position(t);
             if !self.is_free(p, world, avoidance_mode) {
-                println!("collision at {}", t);
+                println!("[robot{}] collision at {}", self.get_id(), t);
                 return false;
             }
         }
@@ -394,20 +394,24 @@ impl Robot<AllyData> {
             None => true,
         };
 
+        let mut interval = tokio::time::interval(CONTROL_PERIOD);
+        // TODO: actually return the followed path or not idk
         let mut followed_path = vec![self.get_pos()];
         'traj: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             && is_angle_right()
         {
-            println!("trying to go to dest");
+            interval.tick().await;
+            println!("[robot{}] trying to go to dest", self.get_id());
             let start = self.get_pos();
             let goal = destination.get_reactive();
-            let field = world.field.lock().unwrap(); // assume that the field won't change size during this path generation
+            let field = *world.field.lock().unwrap(); // assume that the field won't change size during this path generation
 
-            let traj = BangBang2d::new(start, self.get_vel(), goal, 4., 3., 0.1);
+            let traj = BangBang2d::new(start, Vec2::zero(), goal, 5., 3., 0.1);
             if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
-                println!("TRAJ WAS VALID, GOING FASSSTTTTT!");
+                println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
                 let start = Instant::now();
                 while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
+                    interval.tick().await;
                     if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
                         println!("detected collision on traj, generating a new path!");
                         continue 'traj; // generate a new path
@@ -417,8 +421,12 @@ impl Robot<AllyData> {
                     let p = traj.get_position(t);
                     let p_diff = self.pov_vec(p - self.get_pos());
                     if p_diff.norm() > 0.5 {
-                        println!("we fell off the traj!, trying again!");
-                        break;
+                        println!(
+                            "[robot{}] we fell off the traj! (diff={}), trying again!",
+                            self.get_id(),
+                            p_diff.norm()
+                        );
+                        // break;
                     }
                     self.set_target_vel(v + p_diff * 0.5);
                     if let Some(angle) = angle {
@@ -427,7 +435,6 @@ impl Robot<AllyData> {
                                 * GOTO_ANGULAR_SPEED,
                         );
                     }
-                    sleep(CONTROL_PERIOD).await;
                 }
                 continue;
             }

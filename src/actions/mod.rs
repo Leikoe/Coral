@@ -103,18 +103,41 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<Vec<Point
     Ok(path)
 }
 
-// pub async fn three_attackers_attack(left_winger: &Robot, fronter: &Robot, right_winger: &Robot) {
-//     let (p1, p2, p3) = (
-//         Point2::new(0.5, 0.5),
-//         Point2::new(0.5, -0.5),
-//         Point2::new(0.5, 0.),
-//     );
-//     join!(
-//         left_winger.goto(&p1, None),
-//         right_winger.goto(&p2, None),
-//         fronter.goto(&p3, None),
-//     );
-// }
+// TODO: require the fronter to have the ball
+pub async fn three_attackers_attack(
+    world: &World,
+    left_winger: &AllyRobot,
+    fronter: &AllyRobot,
+    right_winger: &AllyRobot,
+) {
+    let goal = Point2::new(4.5, 0.);
+    let (p1, p2, p3) = (
+        Point2::new(2.0, 2.),
+        Point2::new(2.0, 0.),
+        Point2::new(2.0, -2.),
+    );
+
+    let _ = join!(
+        left_winger.goto_traj(
+            world,
+            &p1,
+            Some(left_winger.to(&goal).angle()),
+            AvoidanceMode::AvoidRobots,
+        ),
+        fronter.goto_traj(
+            world,
+            &p2,
+            Some(fronter.to(&goal).angle()),
+            AvoidanceMode::AvoidRobots,
+        ),
+        right_winger.goto_traj(
+            world,
+            &p3,
+            Some(right_winger.to(&goal).angle()),
+            AvoidanceMode::AvoidRobots,
+        ),
+    );
+}
 
 // pub async fn go_get_ball(robot: &Robot, ball: &Ball) {
 //     robot.enable_dribbler();

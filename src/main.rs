@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::{place_ball, shoot},
+    actions::{place_ball, shoot, three_attackers_attack},
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
     math::{Point2, Reactive, Rect, Vec2},
@@ -41,6 +41,8 @@ async fn main() {
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
     let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();
+    let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
+    let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
     let ball = world.ball.clone();
 
     // shoot(&world, &r0, &ball).await;
@@ -57,10 +59,12 @@ async fn main() {
     //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
     //     .await;
 
-    place_ball(&world, &r0, &ball, &Point2::zero()).await;
-    let _ = r0
-        .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
-        .await;
+    // place_ball(&world, &r0, &ball, &Point2::zero()).await;
+    // let _ = r0
+    //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
+    //     .await;
+
+    three_attackers_attack(&world, &r1, &r0, &r2).await;
 
     // for i in 0.. {
     //     println!("new traj {}!", i);
