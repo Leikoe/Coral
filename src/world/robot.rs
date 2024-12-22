@@ -229,43 +229,6 @@ impl Robot<AllyData> {
         *self_target_angular_vel = target_angular_vel;
     }
 
-    // destination is in world space
-    pub async fn goto<T: Reactive<Point2>>(
-        &self,
-        destination: &T,
-        angle: Option<f32>,
-    ) -> Vec<Point2> {
-        let mut cur_pos = self.get_reactive();
-        let mut followed_path = vec![cur_pos];
-        let mut to_pos = destination.get_reactive() - cur_pos;
-
-        let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        while to_pos.norm() > IS_CLOSE_EPSILON {
-            let self_orientation = self.get_orientation();
-            let inverse_orientation = -self_orientation;
-            let robot_to_rest_robot_pov = Point2::new(
-                to_pos.x * inverse_orientation.cos() - to_pos.y * inverse_orientation.sin(),
-                to_pos.y * inverse_orientation.cos() + to_pos.x * inverse_orientation.sin(),
-            );
-
-            let angle_diff = angle
-                .map(|x| angle_difference(x as f64, self_orientation as f64) as f32)
-                .unwrap_or_default();
-            self.set_target_vel(Vec2::new(
-                robot_to_rest_robot_pov.x * GOTO_SPEED,
-                robot_to_rest_robot_pov.y * GOTO_SPEED,
-            ));
-            self.set_target_angular_vel(angle_diff * GOTO_ANGULAR_SPEED);
-
-            // next iter starts here
-            interval.tick().await;
-            cur_pos = self.get_reactive(); // compute diff
-            to_pos = destination.get_reactive() - cur_pos;
-            followed_path.push(cur_pos);
-        }
-        followed_path
-    }
-
     fn is_free(&self, pos: Point2, world: &World, avoidance_mode: AvoidanceMode) -> bool {
         if let AvoidanceMode::None = avoidance_mode {
             return true;
@@ -313,92 +276,33 @@ impl Robot<AllyData> {
         true
     }
 
-    pub async fn goto_rrt<T: Reactive<Point2>>(
+    pub async fn goto<T: Reactive<Point2>>(
         &self,
         world: &World,
         destination: &T,
         angle: Option<f32>,
         avoidance_mode: AvoidanceMode,
-    ) -> Result<Vec<Point2>, String> {
+    ) -> Result<(), String> {
         // fallback to Robot::goto
-        if let AvoidanceMode::None = avoidance_mode {
-            return Ok(self.goto(destination, angle).await);
-        }
+        // if let AvoidanceMode::None = avoidance_mode {
+        //     return Ok(self.goto(destination, angle).await);
+        // }
 
         if !self.is_free(self.get_reactive(), world, avoidance_mode) {
             return Err("we are in a position which isn't free".to_string());
         }
 
         let is_angle_right = || match angle {
-            Some(angle) => angle_difference(angle as f64, self.get_orientation() as f64) < 10.,
-            None => true,
-        };
-
-        let mut followed_path = vec![self.get_reactive()];
-        while self.get_reactive().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
-            && is_angle_right()
-        {
-            let start = Point2::zero();
-            let goal = self.pov(destination.get_reactive());
-            let rect = *world.field.lock().unwrap(); // assume that the field won't change size during this path generation
-
-            let start_time = tokio::time::Instant::now();
-            let mut path = rrt::dual_rrt_connect(
-                &[start.x, start.y],
-                &[goal.x, goal.y],
-                |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
-                || rect.sample_inside().to_vec(),
-                0.1,
-                RRT_MAX_TRIES,
-            )?;
-            rrt::smooth_path(
-                &mut path,
-                |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
-                0.05,
-                100,
-            );
-            let next_point = path
-                .into_iter()
-                .nth(1)
-                .ok_or(format!("Couldn't find a path to {:?}", goal))?;
-            println!(
-                "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
-                self.get_id(),
-                start_time.elapsed().as_millis()
-            );
-
-            self.goto(&Point2::from_vec(&next_point), angle).await;
-            followed_path.push(self.get_reactive());
-        }
-        Ok(followed_path)
-    }
-
-    pub async fn goto_traj<T: Reactive<Point2>>(
-        &self,
-        world: &World,
-        destination: &T,
-        angle: Option<f32>,
-        avoidance_mode: AvoidanceMode,
-    ) -> Result<Vec<Point2>, String> {
-        // fallback to Robot::goto
-        if let AvoidanceMode::None = avoidance_mode {
-            return Ok(self.goto(destination, angle).await);
-        }
-
-        if !self.is_free(self.get_reactive(), world, avoidance_mode) {
-            return Err("we are in a position which isn't free".to_string());
-        }
-
-        let is_angle_right = || match angle {
-            Some(angle) => angle_difference(angle as f64, self.get_orientation() as f64) < 10.,
+            Some(angle) => {
+                angle_difference(angle as f64, self.get_orientation() as f64).abs() < 0.02
+            }
             None => true,
         };
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         // TODO: actually return the followed path or not idk
-        let mut followed_path = vec![self.get_pos()];
         'traj: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
-            && is_angle_right()
+            || !is_angle_right()
         {
             interval.tick().await;
             println!("[robot{}] trying to go to dest", self.get_id());
@@ -515,7 +419,7 @@ impl Robot<AllyData> {
             }
         }
         println!("arrived!");
-        Ok(followed_path)
+        Ok(())
     }
 
     pub async fn wait_until_has_ball(&self) {
@@ -531,7 +435,7 @@ impl Robot<AllyData> {
         let angle = self.to(ball).angle();
         select! {
             _ = self
-                .goto_traj(
+                .goto(
                     world,
                     ball,
                     Some(angle),
@@ -540,6 +444,31 @@ impl Robot<AllyData> {
             _ = self.wait_until_has_ball() => {}
         };
         sleep(Duration::from_millis(200)).await;
+    }
+
+    pub async fn pass_to(&self, world: &World, receiver: &AllyRobot) -> Result<(), String> {
+        let to_receiver = self.to(receiver);
+        let _ = self
+            .goto(
+                world,
+                &self.get_pos(),
+                Some(to_receiver.angle()),
+                AvoidanceMode::AvoidRobots,
+            )
+            .await;
+        sleep(Duration::from_millis(100)).await;
+        let mut kick_cooldown = tokio::time::interval(CONTROL_PERIOD);
+        while self.has_ball() {
+            kick_cooldown.tick().await;
+            self.kick();
+        }
+        match tokio::time::timeout(Duration::from_secs(1), receiver.wait_until_has_ball()).await {
+            Ok(_) => {
+                println!("[robot{}] passed!", self.get_id());
+                Ok(())
+            }
+            Err(_) => Err("passed but didn't receive".to_string()),
+        }
     }
 
     // what can you wait for a robot to do ?

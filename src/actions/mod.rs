@@ -10,7 +10,7 @@ use crate::{
 };
 use tokio::{join, select, time::sleep};
 
-pub async fn shoot<T: Reactive<Point2> + Clone>(
+pub async fn strike_alone<T: Reactive<Point2> + Clone>(
     world: &World,
     robot: &AllyRobot,
     ball: &Ball,
@@ -21,7 +21,7 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
 
     let behind_ball = ball.plus(ball_to_behind_ball);
     let _ = robot
-        .goto_rrt(
+        .goto(
             world,
             &behind_ball,
             Some(ball_to_goal.angle()),
@@ -32,7 +32,7 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
     robot.enable_dribbler();
     select! {
         _ = robot
-            .goto_rrt(
+            .goto(
                 world,
                 ball,
                 Some(ball_to_goal.angle()),
@@ -48,13 +48,13 @@ pub async fn shoot<T: Reactive<Point2> + Clone>(
     }
 }
 
-pub async fn do_square(robot: &AllyRobot) {
-    robot.goto(&Point2::new(0., 1.), None).await;
-    robot.goto(&Point2::new(1., 1.), None).await;
-    robot.goto(&Point2::new(1., 0.), None).await;
-    robot.goto(&Point2::new(0., 0.), None).await;
-    println!("reached dest!");
-}
+// pub async fn do_square(robot: &AllyRobot) {
+//     robot.goto(&Point2::new(0., 1.), None).await;
+//     robot.goto(&Point2::new(1., 1.), None).await;
+//     robot.goto(&Point2::new(1., 0.), None).await;
+//     robot.goto(&Point2::new(0., 0.), None).await;
+//     println!("reached dest!");
+// }
 
 pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ball_pos: &Point2) {
     robot.go_get_ball(world, ball).await;
@@ -62,7 +62,7 @@ pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ba
     let angle_to_ball = to_ball.angle();
     // go put the ball down
     let _ = robot
-        .goto_traj(
+        .goto(
             world,
             &(*target_ball_pos - to_ball.get_reactive()),
             Some(angle_to_ball),
@@ -74,7 +74,7 @@ pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ba
 
     // step away
     let _ = robot
-        .goto_traj(
+        .goto(
             world,
             &(*target_ball_pos - robot.to(ball).get_reactive() * 4.),
             Some(angle_to_ball),
@@ -83,7 +83,7 @@ pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ba
         .await;
 }
 
-pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<Vec<Point2>, String> {
+pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), String> {
     let poses = vec![
         Point2::new(-1., 1.),
         Point2::new(1., 1.),
@@ -91,16 +91,13 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<Vec<Point
         Point2::new(-1., -1.),
     ];
 
-    let mut path = vec![robot.get_reactive()];
     for pos in &poses {
-        path.extend(
-            robot
-                .goto_rrt(world, pos, None, AvoidanceMode::AvoidRobotsAndBall)
-                .await?,
-        );
+        robot
+            .goto(world, pos, None, AvoidanceMode::AvoidRobotsAndBall)
+            .await?
     }
     println!("reached dest!");
-    Ok(path)
+    Ok(())
 }
 
 // TODO: require the fronter to have the ball
@@ -113,30 +110,54 @@ pub async fn three_attackers_attack(
     let goal = Point2::new(4.5, 0.);
     let (p1, p2, p3) = (
         Point2::new(2.0, 2.),
-        Point2::new(2.0, 0.),
+        Point2::new(0.5, 0.),
         Point2::new(2.0, -2.),
     );
 
+    // go in pos
     let _ = join!(
-        left_winger.goto_traj(
+        left_winger.goto(
             world,
             &p1,
-            Some(left_winger.to(&goal).angle()),
+            Some(p1.to(p2).angle()),
             AvoidanceMode::AvoidRobots,
         ),
-        fronter.goto_traj(
+        fronter.goto(
             world,
             &p2,
             Some(fronter.to(&goal).angle()),
             AvoidanceMode::AvoidRobots,
         ),
-        right_winger.goto_traj(
+        right_winger.goto(
             world,
             &p3,
-            Some(right_winger.to(&goal).angle()),
+            Some(p3.to(p2).angle()),
             AvoidanceMode::AvoidRobots,
         ),
     );
+
+    left_winger.enable_dribbler();
+    right_winger.enable_dribbler();
+
+    let chosen_striker = if rand::random::<bool>() {
+        left_winger
+    } else {
+        right_winger
+    };
+
+    let _ = fronter.pass_to(world, chosen_striker).await;
+    let _ = chosen_striker
+        .goto(
+            world,
+            &chosen_striker.get_pos(),
+            Some(chosen_striker.to(&goal).angle()),
+            AvoidanceMode::AvoidRobots,
+        )
+        .await;
+    while chosen_striker.has_ball() {
+        chosen_striker.kick();
+        sleep(Duration::from_secs(1)).await;
+    }
 }
 
 // pub async fn go_get_ball(robot: &Robot, ball: &Ball) {

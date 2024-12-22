@@ -43,7 +43,7 @@ impl RobotController<usize, SendError> for SimRobotController {
             // };
 
             let (kick_speed, kick_angle) = if robot.take_should_kick() {
-                (Some(7.), Some(0.0))
+                (Some(5.), Some(0.0))
             } else {
                 (None, None)
             };

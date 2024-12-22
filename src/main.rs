@@ -1,24 +1,18 @@
 use crabe_async::{
-    actions::{place_ball, shoot, three_attackers_attack},
+    actions::{place_ball, strike_alone, three_attackers_attack},
     controllers::sim_controller::SimRobotController,
     launch_control_thread,
-    math::{Point2, Reactive, Rect, Vec2},
+    math::{Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Rect, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
     world::{AvoidanceMode, Ball, TeamColor, World},
     CONTROL_PERIOD,
-};
-use plotters::{
-    chart::{ChartBuilder, LabelAreaPosition},
-    prelude::{BitMapBackend, Circle, IntoDrawingArea},
-    series::LineSeries,
-    style::{full_palette::GREEN, Color, BLUE, RED, WHITE},
 };
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use tokio::time::sleep;
+use tokio::{join, time::sleep};
 
 /// Simulation of a real control loop
 #[tokio::main]
@@ -47,97 +41,22 @@ async fn main() {
 
     // shoot(&world, &r0, &ball).await;
 
-    // do a square
-    // r0.set_target_vel(Vec2::new(1., 0.));
-    // sleep(Duration::from_secs(1)).await;
-    // let path = do_square_rrt(&world, &r0)
-    //     .await
-    //     .expect("couldn't find a path");
-
-    let goal = Point2::new(2., 0.);
+    // place_ball(&world, &r0, &ball, &goal).await;
     // let _ = r0
-    //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
+    //     .goto(&world, &Point2::zero(), None, AvoidanceMode::AvoidRobots)
     //     .await;
-
-    // place_ball(&world, &r0, &ball, &Point2::zero()).await;
-    // let _ = r0
-    //     .goto_traj(&world, &goal, None, AvoidanceMode::AvoidRobots)
-    //     .await;
-
+    r0.go_get_ball(&world, &ball).await;
     three_attackers_attack(&world, &r1, &r0, &r2).await;
-
-    // for i in 0.. {
-    //     println!("new traj {}!", i);
-    //     let traj = BangBang2d::new(r0.get_pos(), Vec2::zero(), goal, 1., 2., 0.01);
-    //     let start = Instant::now();
-    //     while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
-    //         let t = start.elapsed().as_secs_f64();
-    //         let v = r0.pov_vec(traj.get_velocity(t));
-    //         let p = traj.get_position(t);
-    //         let p_diff = r0.pov_vec(p - r0.get_pos());
-    //         if p_diff.norm() > 0.5 {
-    //             println!("we fell off the traj!");
-    //             // break;
-    //         }
-    //         r0.set_target_vel(v + p_diff * 0.5);
-    //         sleep(CONTROL_PERIOD).await;
-    //     }
-    //     break;
-    // }
-
-    // loop {
-    //     r0.set_target_vel(Vec2::zero());
-    // }
-
-    // let ennemy_goal = Point2::new(4.5, 0.);
-    // for _ in 0..10 {
-    //     shoot(&world, &r0, &ball, &ennemy_goal).await;
-    // }
-
-    // {
-    //     // PLOT
-    //     let root_area = BitMapBackend::new("plot.png", (600, 400)).into_drawing_area();
-    //     root_area.fill(&WHITE).unwrap();
-
-    //     let to_int = |f: f32| (f * 10.) as i32;
-
-    //     let mut ctx = ChartBuilder::on(&root_area)
-    //         .set_label_area_size(LabelAreaPosition::Left, 40)
-    //         .set_label_area_size(LabelAreaPosition::Bottom, 40)
-    //         .caption("Evitement", ("sans-serif", 40))
-    //         .build_cartesian_2d(-45..45, -30..30)
-    //         .unwrap();
-
-    //     ctx.configure_mesh().draw().unwrap();
-
-    //     ctx.draw_series(
-    //         world.lock().unwrap().team.iter().map(|(id, r)| {
-    //             Circle::new((to_int(r.get_pos().x), to_int(r.get_pos().y)), 5, &BLUE)
-    //         }),
-    //     )
-    //     .unwrap();
-
-    //     ctx.draw_series(
-    //         path.iter()
-    //             .map(|p| Circle::new((to_int(p.x), to_int(p.y)), 5, GREEN.filled()))
-    //             .take(1),
-    //     )
-    //     .unwrap();
-
-    //     // ctx.draw_series(
-    //     //     vec![goal]
-    //     //         .iter()
-    //     //         .map(|p| Circle::new((to_int(p.x), to_int(p.y)), 5, RED.filled()))
-    //     //         .take(1),
-    //     // )
-    //     // .unwrap();
-
-    //     ctx.draw_series(LineSeries::new(
-    //         path.iter().map(|p| (to_int(p.x), to_int(p.y))),
-    //         &RED,
-    //     ))
-    //     .unwrap();
-    // }
+    let (d1, d0, d2) = (
+        Point2::new(-1., 1.),
+        Point2::new(-1., 0.),
+        Point2::new(-1., -1.),
+    );
+    let _ = join!(
+        r1.goto(&world, &d1, Some(0.), AvoidanceMode::AvoidRobots,),
+        r0.goto(&world, &d0, Some(0.), AvoidanceMode::AvoidRobots,),
+        r2.goto(&world, &d2, Some(0.), AvoidanceMode::AvoidRobots,),
+    );
 
     sleep(Duration::from_millis(100)).await;
     control_loop_thread_stop_notifier.notify_one(); // ask for stop
