@@ -156,12 +156,6 @@ pub async fn three_attackers_attack(
     }
 }
 
-// pub async fn go_get_ball(robot: &Robot, ball: &Ball) {
-//     robot.enable_dribbler();
-//     robot.goto(ball, None).await; // this will follow the ball even if it moves
-//     println!("got ball!");
-// }
-
 // pub async fn intercept(robot: &Robot, ball: &Ball) {
 //     let target_orientation = robot.to(ball).angle();
 //     if ball.get_vel().norm() < 0.4 {
