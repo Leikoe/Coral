@@ -8,7 +8,10 @@ use crate::{
     world::{AllyRobot, AvoidanceMode, Ball, GotoError, World},
     CONTROL_PERIOD,
 };
-use tokio::{join, select, time::sleep};
+use tokio::{
+    join, select,
+    time::{sleep, Interval},
+};
 
 pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
     let goal = world.get_ennemy_goal_bounding_box().center();
@@ -49,8 +52,41 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     let ball_to_goal = ball.to(&goal);
     robot.go_get_ball(world, ball).await;
     robot
-        .goto(world, &Point2::new(3., 0.), Some(45.), AvoidanceMode::None)
+        .goto(
+            world,
+            &Point2::new(3., 1.),
+            Some(1.5708),
+            AvoidanceMode::None,
+        )
         .await;
+
+    let top_goal = Point2::new((world.field.get_field_length() / 2.) as f32, 0.5);
+    let bottom_goal = Point2::new((world.field.get_field_length() / 2.) as f32, -0.5);
+    let goal_line = Line::new(top_goal, bottom_goal);
+    let shoot_when_can_score = async {
+        let mut interval = tokio::time::interval(Duration::from_millis(50));
+        loop {
+            interval.tick().await;
+            let robot_to_ray_horizon = Vec2::new(
+                1000. * robot.get_orientation().cos(),
+                1000. * robot.get_orientation().sin(),
+            );
+            let ray = Line::new(robot.get_pos(), robot.get_pos() + robot_to_ray_horizon);
+
+            if let Ok(i) = ray.intersection_lines(&goal_line) {
+                if i.y < 0.5 && i.y > -0.5 {
+                    println!("SHOOT!");
+                    robot.kick();
+                }
+            }
+        }
+    };
+
+    let p = Point2::new(3., -1.);
+    join!(
+        robot.goto(world, &p, Some(0.), AvoidanceMode::None),
+        shoot_when_can_score
+    );
 }
 
 // pub async fn do_square(robot: &AllyRobot) {

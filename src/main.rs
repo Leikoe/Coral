@@ -132,7 +132,7 @@ async fn play(world: World, mut gc: GameController) {
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     let start = Instant::now();
 
-    // backwards_strike(&world, &r0, &ball).await;
+    backwards_strike(&world, &r0, &ball).await;
 
     // loop {
     //     interval.tick().await; // YIELD
@@ -157,9 +157,9 @@ async fn play(world: World, mut gc: GameController) {
 
     // let _ = r0.goto(&world, &p, None, AvoidanceMode::None).await;
 
-    let _ = r0
-        .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-        .await;
+    // let _ = r0
+    //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+    //     .await;
 
     // let start = Instant::now();
     // let traj = BangBang2d::new(
