@@ -126,7 +126,10 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn get_pos(&self) -> Point2 {
-        *self.pos.lock().unwrap()
+        let p = *self.pos.lock().unwrap();
+        let dt = self.get_last_update().elapsed();
+        let pos = p + self.get_vel() * dt.as_secs_f32();
+        pos
     }
 
     pub fn set_pos(&mut self, pos: Point2) {
@@ -171,8 +174,9 @@ impl<D: RobotData> Robot<D> {
         self.set_orientation(detected_orientation);
         let dt = detection_time.duration_since(self.get_last_update());
         if !dt.is_zero() {
+            let self_pos = *self.pos.lock().unwrap();
             // TODO: remove f32 from the project :sob:
-            self.set_vel((detected_pos - self.get_pos()) / dt.as_secs_f64() as f32);
+            self.set_vel((detected_pos - self_pos) / dt.as_secs_f64() as f32);
         }
 
         self.set_pos(detected_pos);
@@ -315,10 +319,7 @@ impl Robot<AllyData> {
     }
 
     fn make_bangbang2d_to(&self, dest: Point2) -> BangBang2d {
-        dbg!(self.get_vel());
-
-        // TODO: REMOVE THIS WAS FOR DEBUG
-        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 3., 2., 0.1)
+        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 4., 2., 0.1)
     }
 
     async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
@@ -357,14 +358,7 @@ impl Robot<AllyData> {
         {
             interval.tick().await;
             if traj_start.elapsed() > Duration::from_millis(100) {
-                let t = traj_start.elapsed().as_secs_f64();
-                // dbg!(traj.get_velocity(t));
-
-                let dt = self.get_last_update().elapsed();
-                let pos = self.get_pos() + self.get_vel() * dt.as_secs_f32();
-                println!("generating new traj with info {}s old", dt.as_secs_f64());
-
-                traj = BangBang2d::new(pos, self.get_vel(), dest, 3., 2., 0.1);
+                traj = self.make_bangbang2d_to(dest);
                 traj_start = Instant::now();
             }
             let t = traj_start.elapsed().as_secs_f64();
