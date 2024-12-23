@@ -165,7 +165,13 @@ async fn main() {
 
     select! {
         _ = play(world, gc) => {}
-        _ = tokio::signal::ctrl_c() => {
+        r = tokio::signal::ctrl_c() => {
+            match r {
+                Ok(()) => {},
+                Err(e) => {
+                    eprintln!("failed to listen for event: {:?}", e);
+                }
+            }
             println!("detected ctrl-c, stopping now!");
         }
     }
