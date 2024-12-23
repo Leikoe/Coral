@@ -1,6 +1,6 @@
 // Tiger's BangBang2d implementation in rust
 
-use std::{cmp::Ordering, f64::consts::PI};
+use std::{cmp::Ordering, f64::consts::PI, time::Instant};
 
 use crate::math::{Point2, Vec2};
 
@@ -30,8 +30,20 @@ impl BangBang2d {
         let mut inc = PI / 8.0;
         let mut alpha = PI / 4.0;
 
-        let mut x: BangBang1d = BangBang1d::default(); // TODO: don't do that
-        let mut y: BangBang1d = BangBang1d::default();
+        let mut x: BangBang1d = BangBang1d::new(
+            initial_posx,
+            initial_velx,
+            target_posx,
+            max_vel * alpha.cos(),
+            max_accel * alpha.cos(),
+        ); // TODO: don't do that
+        let mut y: BangBang1d = BangBang1d::new(
+            initial_posy,
+            initial_vely,
+            target_posy,
+            max_vel * alpha.sin(),
+            max_accel * alpha.sin(),
+        );
 
         // binary search, some iterations (fixed)
         while inc > 1e-7 {
