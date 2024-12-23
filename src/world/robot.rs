@@ -323,31 +323,8 @@ impl Robot<AllyData> {
     }
 
     async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
-        // let root_area = BitMapBackend::new("bangbang.png", (600, 400)).into_drawing_area();
-        // root_area.fill(&WHITE).unwrap();
-
-        // let to_int = |f: f32| (f * 10.) as i32;
-
-        // let mut ctx = ChartBuilder::on(&root_area)
-        //     .set_label_area_size(LabelAreaPosition::Left, 40)
-        //     .set_label_area_size(LabelAreaPosition::Bottom, 40)
-        //     .caption("Evitement", ("sans-serif", 40))
-        //     .build_cartesian_2d(-40..40, -17..17)
-        //     .unwrap();
-
-        // ctx.configure_mesh().draw().unwrap();
-
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         let mut traj = self.make_bangbang2d_to(destination.get_reactive());
-        // {
-        //     ctx.draw_series(
-        //         (0..(traj.get_total_runtime() / CONTROL_PERIOD.as_secs_f64()) as usize).map(|t| {
-        //             let p = traj.get_position(t as f64 * CONTROL_PERIOD.as_secs_f64());
-        //             Circle::new((to_int(p.x), to_int(p.y)), 5, &BLUE)
-        //         }),
-        //     )
-        //     .unwrap();
-        // }
         let mut traj_start = Instant::now();
         while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle

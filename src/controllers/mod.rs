@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, future::Future};
 
 use crate::world::AllyRobot;
 
@@ -11,7 +11,7 @@ where
     fn send_proper_command_for(
         &mut self,
         robots: impl Iterator<Item = AllyRobot>,
-    ) -> impl std::future::Future<Output = Result<R, E>> + Send;
+    ) -> impl Future<Output = Result<R, E>> + Send;
 
     fn close(self) -> impl std::future::Future<Output = Result<(), E>> + Send;
 }

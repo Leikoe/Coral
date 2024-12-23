@@ -10,7 +10,10 @@ use crabe_async::{
     world::{AllyRobot, AvoidanceMode, EnnemyRobot, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
-use std::time::{Duration, Instant, SystemTime};
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration, Instant, SystemTime},
+};
 use tokio::{join, select, time::sleep};
 
 #[derive(Debug)]
@@ -128,25 +131,28 @@ async fn play(world: World, mut gc: GameController) {
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     let start = Instant::now();
-    // loop {
-    //     interval.tick().await; // YIELD
+    loop {
+        interval.tick().await; // YIELD
 
-    //     // let gc_pending_packets = gc.take_pending_packets().await;
-    //     // if let Some(p) = gc_pending_packets.last() {
-    //     //     state = state.update(GameEvent::RefereeCommand(p.command()));
-    //     //     dbg!(&state);
-    //     // }
+        // let gc_pending_packets = gc.take_pending_packets().await;
+        // if let Some(p) = gc_pending_packets.last() {
+        //     state = state.update(GameEvent::RefereeCommand(p.command()));
+        //     dbg!(&state);
+        // }
 
-    //     // r0.set_target_vel(Vec2::new(1., 0.));
-    // }
-    let p = || {
-        Point2::new(
-            start.elapsed().as_secs_f32().cos() * 1.0,
-            start.elapsed().as_secs_f32().sin() * 1.0,
-        )
-    };
+        // r0.set_target_vel(Vec2::new(1., 0.));
+        let _ = r0
+            .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+            .await;
+    }
+    // let p = || {
+    //     Point2::new(
+    //         start.elapsed().as_secs_f32().cos() * 1.0,
+    //         start.elapsed().as_secs_f32().sin() * 1.0,
+    //     )
+    // };
 
-    let _ = r0.goto(&world, &p, None, AvoidanceMode::None).await;
+    // let _ = r0.goto(&world, &p, None, AvoidanceMode::None).await;
 
     // let _ = r0
     //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
@@ -165,12 +171,12 @@ async fn play(world: World, mut gc: GameController) {
     // println!("duree totale: {}s", traj.get_total_runtime());
 }
 
-fn launch_vision_thread(mut world: World, real: bool) {
+fn update_world_with_vision_forever(mut world: World, real: bool) {
     tokio::spawn(async move {
         let mut vision = Vision::new(None, None, real);
         loop {
             while let Ok(packet) = vision.receive().await {
-                // println!("UPDATE!");
+                println!("UPDATE!");
                 let mut ally_team = world.team.lock().unwrap();
                 let mut ennemy_team = world.ennemies.lock().unwrap();
                 let ball = world.ball.clone();
@@ -184,7 +190,6 @@ fn launch_vision_thread(mut world: World, real: bool) {
                         ));
                     }
 
-                    // TODO: handle ennemies
                     let (allies, ennemies) = match world.team_color {
                         TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
                         TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
@@ -216,7 +221,6 @@ fn launch_vision_thread(mut world: World, real: bool) {
                 if let Some(geometry) = packet.geometry {
                     world.field.update_from_packet(geometry.field);
                 }
-                // pending_packets_count += 1;
             }
         }
     });
@@ -230,10 +234,9 @@ async fn main() {
     let world = World::default_with_team_color(color);
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;
+    update_world_with_vision_forever(world.clone(), real);
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), controller);
-    launch_vision_thread(world.clone(), real);
-
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
     select! {

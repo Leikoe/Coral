@@ -10,6 +10,7 @@ pub mod vision;
 pub mod world;
 
 use std::{
+    collections::HashMap,
     fmt::Debug,
     net::Ipv4Addr,
     sync::Arc,
@@ -17,15 +18,19 @@ use std::{
 };
 
 use controllers::RobotController;
+use league_protocols::simulation_packet::RobotFeedback;
 use math::Point2;
 use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
 use vision::Vision;
-use world::{AllyRobot, EnnemyRobot, TeamColor, World};
+use world::{AllyRobot, EnnemyRobot, RobotId, TeamColor, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 pub const DETECTION_SCALING_FACTOR: f32 = 1000.;
 
-async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
+async fn control_loop<
+    E: Debug,
+    C: RobotController<HashMap<RobotId, RobotFeedback>, E> + Send + 'static,
+>(
     mut world: World,
     controller: &mut C,
 ) {
@@ -41,16 +46,22 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
             .values()
             .map(|r| r.clone())
             .collect::<Vec<AllyRobot>>();
-        let _ = controller
+        let feedback = controller
             .send_proper_command_for(robots.into_iter())
             .await
             .expect("couldn't send commands to robots");
+        // for v in feedback.values() {
+        //     dbg!(v);
+        //     if let Some(r) = world.team.lock().unwrap().get_mut(&(v.id as RobotId)) {
+        //         r.set_has_ball(v.dribbler_ball_contact());
+        //     }
+        // }
     }
 }
 
-pub fn launch_control_thread<T, E: Debug>(
+pub fn launch_control_thread<E: Debug>(
     world: World,
-    mut controller: impl RobotController<T, E> + Send + 'static,
+    mut controller: impl RobotController<HashMap<RobotId, RobotFeedback>, E> + Send + 'static,
 ) -> (Arc<Notify>, JoinHandle<()>) {
     let notifier = Arc::new(tokio::sync::Notify::new());
     let notifier_clone = notifier.clone();
