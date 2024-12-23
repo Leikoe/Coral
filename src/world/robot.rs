@@ -319,11 +319,10 @@ impl Robot<AllyData> {
     }
 
     fn make_bangbang2d_to(&self, dest: Point2) -> BangBang2d {
-        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 4., 2., 0.1)
+        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 4., 0.1)
     }
 
     async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
-        let dest = destination.get_reactive();
         // let root_area = BitMapBackend::new("bangbang.png", (600, 400)).into_drawing_area();
         // root_area.fill(&WHITE).unwrap();
 
@@ -339,7 +338,7 @@ impl Robot<AllyData> {
         // ctx.configure_mesh().draw().unwrap();
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        let mut traj = self.make_bangbang2d_to(dest);
+        let mut traj = self.make_bangbang2d_to(destination.get_reactive());
         // {
         //     ctx.draw_series(
         //         (0..(traj.get_total_runtime() / CONTROL_PERIOD.as_secs_f64()) as usize).map(|t| {
@@ -350,15 +349,15 @@ impl Robot<AllyData> {
         //     .unwrap();
         // }
         let mut traj_start = Instant::now();
-        while !(self.get_pos().distance_to(&dest) < IS_CLOSE_EPSILON
+        while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
             && self.get_vel().norm() < 0.01)
         {
             interval.tick().await;
-            if traj_start.elapsed() > Duration::from_millis(100) {
-                traj = self.make_bangbang2d_to(dest);
+            if traj_start.elapsed() > Duration::from_millis(200) {
+                traj = self.make_bangbang2d_to(destination.get_reactive());
                 traj_start = Instant::now();
             }
             let t = traj_start.elapsed().as_secs_f64();

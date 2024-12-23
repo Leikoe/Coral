@@ -15,6 +15,12 @@ impl<'a, T: Fn() -> Vec2> Reactive<Vec2> for T {
     }
 }
 
+impl<'a, T: Fn() -> Point2> Reactive<Point2> for T {
+    fn get_reactive(&self) -> Point2 {
+        self()
+    }
+}
+
 pub trait ReactiveVec2Ext: Reactive<Vec2> + Sized {
     fn normalized(&self) -> impl Reactive<Vec2> {
         move || self.get_reactive().normalized()

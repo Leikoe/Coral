@@ -4,7 +4,7 @@ use crabe_async::{
     game_controller::GameController,
     launch_control_thread,
     league_protocols::game_controller_packet::referee::Command,
-    math::{Point2, Vec2},
+    math::{Point2, Reactive, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
     vision::Vision,
     world::{AllyRobot, AvoidanceMode, EnnemyRobot, TeamColor, World},
@@ -127,6 +127,7 @@ async fn play(world: World, mut gc: GameController) {
     let state = GameState::Halted(HaltedState::Halt);
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
+    let start = Instant::now();
     // loop {
     //     interval.tick().await; // YIELD
 
@@ -137,14 +138,19 @@ async fn play(world: World, mut gc: GameController) {
     //     // }
 
     //     // r0.set_target_vel(Vec2::new(1., 0.));
-    //     let _ = r0
-    //         .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-    //         .await;
     // }
+    let p = || {
+        Point2::new(
+            start.elapsed().as_secs_f32().cos() * 1.0,
+            start.elapsed().as_secs_f32().sin() * 1.0,
+        )
+    };
 
-    let _ = r0
-        .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-        .await;
+    let _ = r0.goto(&world, &p, None, AvoidanceMode::None).await;
+
+    // let _ = r0
+    //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+    //     .await;
 
     // let start = Instant::now();
     // let traj = BangBang2d::new(
