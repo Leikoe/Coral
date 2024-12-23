@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::three_attackers_attack,
+    actions::{backwards_strike, three_attackers_attack},
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
@@ -131,20 +131,23 @@ async fn play(world: World, mut gc: GameController) {
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     let start = Instant::now();
-    loop {
-        interval.tick().await; // YIELD
 
-        // let gc_pending_packets = gc.take_pending_packets().await;
-        // if let Some(p) = gc_pending_packets.last() {
-        //     state = state.update(GameEvent::RefereeCommand(p.command()));
-        //     dbg!(&state);
-        // }
+    // backwards_strike(&world, &r0, &ball).await;
 
-        // r0.set_target_vel(Vec2::new(1., 0.));
-        let _ = r0
-            .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-            .await;
-    }
+    // loop {
+    //     interval.tick().await; // YIELD
+
+    //     // let gc_pending_packets = gc.take_pending_packets().await;
+    //     // if let Some(p) = gc_pending_packets.last() {
+    //     //     state = state.update(GameEvent::RefereeCommand(p.command()));
+    //     //     dbg!(&state);
+    //     // }
+
+    //     // r0.set_target_vel(Vec2::new(1., 0.));
+    //     let _ = r0
+    //         .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+    //         .await;
+    // }
     // let p = || {
     //     Point2::new(
     //         start.elapsed().as_secs_f32().cos() * 1.0,
@@ -154,9 +157,9 @@ async fn play(world: World, mut gc: GameController) {
 
     // let _ = r0.goto(&world, &p, None, AvoidanceMode::None).await;
 
-    // let _ = r0
-    //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-    //     .await;
+    let _ = r0
+        .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+        .await;
 
     // let start = Instant::now();
     // let traj = BangBang2d::new(
@@ -226,10 +229,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
     }
 }
 
-async fn update_world_with_ally_feedback_forever(
-    mut world: World,
-    mut controller: SimRobotController,
-) {
+async fn update_world_with_ally_feedback_forever(world: World, mut controller: SimRobotController) {
     loop {
         match controller.receive_feedback().await {
             Ok(feedbacks) => {

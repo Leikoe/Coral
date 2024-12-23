@@ -44,6 +44,15 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
     }
 }
 
+pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
+    let goal = world.get_ennemy_goal_bounding_box().center();
+    let ball_to_goal = ball.to(&goal);
+    robot.go_get_ball(world, ball).await;
+    robot
+        .goto(world, &Point2::new(3., 0.), Some(45.), AvoidanceMode::None)
+        .await;
+}
+
 // pub async fn do_square(robot: &AllyRobot) {
 //     robot.goto(&Point2::new(0., 1.), None).await;
 //     robot.goto(&Point2::new(1., 1.), None).await;

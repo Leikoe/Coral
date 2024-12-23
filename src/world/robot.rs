@@ -263,7 +263,7 @@ impl Robot<AllyData> {
         if let Some((traj_start, traj)) = self.get_trajectory() {
             let t = traj_start.elapsed().as_secs_f64();
             let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
-            traj.get_velocity(t) + p_diff * 0.5
+            self.pov_vec(traj.get_velocity(t)) + p_diff * 0.5
         } else {
             Vec2::zero()
         }
@@ -284,11 +284,6 @@ impl Robot<AllyData> {
     pub fn get_target_angular_vel(&self) -> f32 {
         *self.internal_data.target_angular_vel.lock().unwrap()
     }
-
-    // pub fn set_target_vel(&self, target_vel: Vec2) {
-    //     let mut self_target_vel = self.internal_data.target_vel.lock().unwrap();
-    //     *self_target_vel = target_vel;
-    // }
 
     pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
         let mut self_target_angular_vel = self.internal_data.target_angular_vel.lock().unwrap();
@@ -356,6 +351,7 @@ impl Robot<AllyData> {
             && self.get_vel().norm() < 0.01)
         {
             interval.tick().await;
+            println!("recomputed!");
             self.set_trajectory(
                 Instant::now(),
                 self.make_bangbang2d_to(destination.get_reactive()),
@@ -367,6 +363,21 @@ impl Robot<AllyData> {
                     self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
                 );
             }
+        }
+    }
+
+    async fn look_at<T: Reactive<Point2>>(&self, destination: &T) {
+        while !(self
+            .orientation_diff_to(self.to(destination).angle() as f64)
+            .abs()
+            < 0.02)
+        {
+            // TODO: find a way to handle the angle
+            self.set_target_angular_vel(
+                self.orientation_diff_to(self.to(destination).angle() as f64) as f32
+                    * GOTO_ANGULAR_SPEED,
+            );
+            sleep(Duration::from_millis(50)).await;
         }
     }
 
@@ -531,7 +542,7 @@ impl Robot<AllyData> {
                     world,
                     ball,
                     Some(angle),
-                    AvoidanceMode::AvoidRobots,
+                    AvoidanceMode::None, // TODO: fix this when avoidance works again
                 ) => {}
             _ = self.wait_until_has_ball() => {}
         };
