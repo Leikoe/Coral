@@ -324,16 +324,24 @@ impl Robot<AllyData> {
 
     async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
-            || !angle
+        let mut traj = self.make_bangbang2d_to(destination.get_reactive());
+        let mut traj_start = Instant::now();
+        while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
+            && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
+            && self.get_vel().norm() < 0.01)
         {
             interval.tick().await;
-            let traj = self.make_bangbang2d_to(destination.get_reactive());
-            let t = CONTROL_PERIOD.as_secs_f64();
+            dbg!(self.get_vel());
+            if traj_start.elapsed() > Duration::from_millis(500) {
+                traj = self.make_bangbang2d_to(destination.get_reactive());
+                traj_start = Instant::now();
+            }
+            let t = traj_start.elapsed().as_secs_f64();
             let v = self.pov_vec(traj.get_velocity(t));
-            self.set_target_vel(v);
+            let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
+            self.set_target_vel(v + p_diff * 0.5);
             if let Some(angle) = angle {
                 self.set_target_angular_vel(
                     self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,

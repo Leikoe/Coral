@@ -6,8 +6,9 @@ use crabe_async::{
     league_protocols::game_controller_packet::referee::Command,
     math::{Point2, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
-    world::{AvoidanceMode, TeamColor, World},
-    CONTROL_PERIOD,
+    vision::Vision,
+    world::{AllyRobot, AvoidanceMode, EnnemyRobot, TeamColor, World},
+    CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::time::{Duration, Instant};
 use tokio::{join, select, time::sleep};
@@ -141,6 +142,10 @@ async fn play(world: World, mut gc: GameController) {
             .await;
     }
 
+    // let _ = r0
+    //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+    //     .await;
+
     // let start = Instant::now();
     // let traj = BangBang2d::new(
     //     Point2::zero(),
@@ -154,15 +159,74 @@ async fn play(world: World, mut gc: GameController) {
     // println!("duree totale: {}s", traj.get_total_runtime());
 }
 
+fn launch_vision_thread(mut world: World, real: bool) {
+    tokio::spawn(async move {
+        let mut vision = Vision::new(None, None, real);
+        loop {
+            while let Ok(packet) = vision.receive().await {
+                let mut ally_team = world.team.lock().unwrap();
+                let mut ennemy_team = world.ennemies.lock().unwrap();
+                let ball = world.ball.clone();
+                if let Some(detection) = packet.detection {
+                    let detection_time =
+                        world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
+                    if let Some(ball_detection) = detection.balls.get(0) {
+                        ball.set_pos(Point2::new(
+                            ball_detection.x / DETECTION_SCALING_FACTOR,
+                            ball_detection.y / DETECTION_SCALING_FACTOR,
+                        ));
+                    }
+
+                    // TODO: handle ennemies
+                    let (allies, ennemies) = match world.team_color {
+                        TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
+                        TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
+                    };
+                    for ally_detection in allies {
+                        let rid = ally_detection.robot_id() as u8;
+                        if ally_team.get_mut(&rid).is_none() {
+                            println!("[DEBUG] added ally {} to the team!", rid);
+                            let r = AllyRobot::default_with_id(rid);
+                            ally_team.insert(rid, r);
+                        }
+                        // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                        let r = ally_team.get_mut(&rid).unwrap();
+                        r.update_from_packet(ally_detection, &ball, detection_time);
+                    }
+
+                    for ennemy_detection in ennemies {
+                        let rid = ennemy_detection.robot_id() as u8;
+                        if ennemy_team.get_mut(&rid).is_none() {
+                            println!("[DEBUG] added ennemy {} to the ennemies!", rid);
+                            let r = EnnemyRobot::default_with_id(rid);
+                            ennemy_team.insert(rid, r);
+                        }
+                        // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                        let r = ennemy_team.get_mut(&rid).unwrap();
+                        r.update_from_packet(ennemy_detection, &ball, detection_time);
+                    }
+                }
+                if let Some(geometry) = packet.geometry {
+                    world.field.update_from_packet(geometry.field);
+                }
+                // pending_packets_count += 1;
+            }
+        }
+    });
+}
+
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
     let color = TeamColor::Blue;
+    let real = false;
     let world = World::default_with_team_color(color);
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
-        launch_control_thread(world.clone(), None, None, false, color, controller);
+        launch_control_thread(world.clone(), controller);
+    launch_vision_thread(world.clone(), real);
+
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION
 
     select! {
