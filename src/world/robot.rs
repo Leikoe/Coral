@@ -313,7 +313,7 @@ impl Robot<AllyData> {
     }
 
     fn make_bangbang2d_to(&self, dest: Point2) -> BangBang2d {
-        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 2., 2., 0.1)
+        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 2., 0.1)
     }
 
     async fn goto_straight<T: Reactive<Point2>>(
@@ -331,6 +331,7 @@ impl Robot<AllyData> {
                 .unwrap_or(true)
         {
             interval.tick().await;
+            println!("vel: {:?} [m/s]", self.get_vel());
             if traj_start.elapsed() > Duration::from_millis(50) {
                 traj_start = Instant::now();
                 traj = self.make_bangbang2d_to(destination.get_reactive());

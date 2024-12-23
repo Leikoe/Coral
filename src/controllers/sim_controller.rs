@@ -2,7 +2,8 @@ use std::{future::Future, net::Ipv4Addr};
 
 use crate::{
     league_protocols::simulation_packet::{
-        robot_move_command, MoveLocalVelocity, RobotCommand, RobotControl, RobotMoveCommand,
+        robot_move_command, MoveLocalVelocity, MoveWheelVelocity, RobotCommand, RobotControl,
+        RobotMoveCommand,
     },
     net::{udp_transceiver::UdpTransceiver, SendError},
     world::{AllyRobot, TeamColor},
@@ -80,24 +81,25 @@ impl RobotController<usize, SendError> for SimRobotController {
     // workaround for async Drop, to be replaced when std::future::AsyncDrop is stabilized
     async fn close(self) -> Result<(), SendError> {
         let mut packet = RobotControl::default();
-        for rid in 0..1 {
+        for rid in 0..16 {
             packet.robot_commands.push(RobotCommand {
                 id: rid,
                 move_command: Some(RobotMoveCommand {
-                    command: Some(robot_move_command::Command::LocalVelocity(
-                        MoveLocalVelocity {
-                            forward: 0.,
-                            left: 0.,
-                            angular: 0.,
+                    command: Some(robot_move_command::Command::WheelVelocity(
+                        MoveWheelVelocity {
+                            front_right: 0.,
+                            back_right: 0.,
+                            back_left: 0.,
+                            front_left: 0.,
                         },
                     )),
                 }),
-                kick_speed: None,
-                kick_angle: None,
+                kick_speed: Some(5.),
+                kick_angle: Some(0.),
                 dribbler_speed: Some(0.),
             });
         }
-
+        println!("stopping robots..");
         self.socket.send(packet).await.map(|_| ())
     }
 }

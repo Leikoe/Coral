@@ -127,16 +127,18 @@ async fn play(world: World, mut gc: GameController) {
 
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     loop {
+        interval.tick().await; // YIELD
+
         // let gc_pending_packets = gc.take_pending_packets().await;
         // if let Some(p) = gc_pending_packets.last() {
         //     state = state.update(GameEvent::RefereeCommand(p.command()));
         //     dbg!(&state);
         // }
 
-        interval.tick().await; // YIELD
-        let _ = r0
-            .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-            .await;
+        r0.set_target_vel(Vec2::new(1., 0.));
+        // let _ = r0
+        //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+        //     .await;
     }
 
     // let traj = BangBang2d::new(
