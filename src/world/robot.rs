@@ -9,7 +9,7 @@ use crate::{
 };
 use std::{
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 use super::Ball;
@@ -34,13 +34,14 @@ pub enum AvoidanceMode {
 // TODO: RobotData, Robot, AllyData and EnnemyData should be private
 pub trait RobotData: Clone + Default {}
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Robot<D: RobotData> {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
     vel: Arc<Mutex<Vec2>>,
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
+    last_update: Arc<Mutex<std::time::SystemTime>>,
     internal_data: D,
 }
 
@@ -76,6 +77,7 @@ impl<D: RobotData> Robot<D> {
             vel: Arc::new(Mutex::new(Vec2::zero())),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
+            last_update: Arc::new(Mutex::new(SystemTime::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
             internal_data: Default::default(),
         }
     }
@@ -83,7 +85,12 @@ impl<D: RobotData> Robot<D> {
     pub fn default_with_id(id: RobotId) -> Self {
         Self {
             id,
-            ..Default::default()
+            pos: Default::default(),
+            vel: Default::default(),
+            orientation: Default::default(),
+            has_ball: Default::default(),
+            last_update: Arc::new(Mutex::new(SystemTime::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
+            internal_data: Default::default(),
         }
     }
 
@@ -136,18 +143,42 @@ impl<D: RobotData> Robot<D> {
         *_orientation = orientation;
     }
 
-    pub fn update_from_packet(&mut self, detection: SslDetectionRobot, ball: &Ball) {
+    pub fn get_last_update(&self) -> SystemTime {
+        *self.last_update.lock().unwrap()
+    }
+
+    pub fn set_last_update(&mut self, last_update: SystemTime) {
+        let mut _last_update = self.last_update.lock().unwrap();
+        *_last_update = last_update;
+    }
+
+    pub fn update_from_packet(
+        &mut self,
+        detection: SslDetectionRobot,
+        ball: &Ball,
+        detection_time: SystemTime,
+    ) {
         let detected_pos = Point2::new(
             detection.x / DETECTION_SCALING_FACTOR,
             detection.y / DETECTION_SCALING_FACTOR,
         );
         let detected_orientation = detection.orientation();
         self.set_orientation(detected_orientation);
-        if detected_pos != self.get_pos() {
-            self.set_vel(
-                (detected_pos - self.get_pos()) * (1. / CONTROL_PERIOD.as_secs_f64()) as f32,
-            );
+        match detection_time.duration_since(self.get_last_update()) {
+            Ok(d) => {
+                if !d.is_zero() {
+                    // TODO: remove f32 from the project :sob:
+                    self.set_vel((detected_pos - self.get_pos()) / d.as_secs_f64() as f32);
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "[WARNING] error occured while computing duration since last update: {:?}",
+                    e
+                );
+            }
         }
+
         self.set_pos(detected_pos);
         let has_ball = {
             let r_to_ball = self.to(ball);
@@ -157,6 +188,7 @@ impl<D: RobotData> Robot<D> {
             is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
         };
         self.set_has_ball(has_ball);
+        self.set_last_update(detection_time);
     }
 
     fn collides_with_robot(&self, other_pos: Point2) -> bool {
@@ -180,6 +212,10 @@ impl<D: RobotData> Robot<D> {
             vel.x * inverse_orientation.cos() - vel.y * inverse_orientation.sin(),
             vel.y * inverse_orientation.cos() + vel.x * inverse_orientation.sin(),
         )
+    }
+
+    pub fn orientation_diff_to(&self, target_orientation: f64) -> f64 {
+        angle_difference(target_orientation, self.get_orientation() as f64)
     }
 }
 
@@ -276,17 +312,54 @@ impl Robot<AllyData> {
         true
     }
 
+    fn make_bangbang2d_to(&self, dest: Point2) -> BangBang2d {
+        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 10., 0.1)
+    }
+
+    async fn goto_straight<T: Reactive<Point2>>(
+        &self,
+        destination: &T,
+        angle: Option<f64>,
+    ) -> Result<(), String> {
+        let mut interval = tokio::time::interval(CONTROL_PERIOD);
+        let mut traj_start = Instant::now();
+        let mut traj = self.make_bangbang2d_to(destination.get_reactive());
+
+        while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
+            || !angle
+                .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                .unwrap_or(true)
+        {
+            interval.tick().await;
+            if traj_start.elapsed() > Duration::from_millis(100) {
+                traj_start = Instant::now();
+                traj = self.make_bangbang2d_to(destination.get_reactive());
+            }
+            let t = traj_start.elapsed().as_secs_f64();
+            let v = self.pov_vec(traj.get_velocity(t));
+            let p = traj.get_position(t);
+            let p_diff = self.pov_vec(p - self.get_pos());
+            self.set_target_vel(v + p_diff * 0.5);
+            if let Some(angle) = angle {
+                self.set_target_angular_vel(
+                    self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
+                );
+            }
+        }
+        Ok(())
+    }
+
     pub async fn goto<T: Reactive<Point2>>(
         &self,
         world: &World,
         destination: &T,
-        angle: Option<f32>,
+        angle: Option<f64>,
         avoidance_mode: AvoidanceMode,
     ) -> Result<(), String> {
         // fallback to Robot::goto
-        // if let AvoidanceMode::None = avoidance_mode {
-        //     return Ok(self.goto(destination, angle).await);
-        // }
+        if let AvoidanceMode::None = avoidance_mode {
+            return self.goto_straight(destination, angle).await;
+        }
 
         if !self.is_free(self.get_reactive(), world, avoidance_mode) {
             return Err("we are in a position which isn't free".to_string());

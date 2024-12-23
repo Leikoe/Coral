@@ -9,7 +9,12 @@ pub mod trajectories;
 pub mod vision;
 pub mod world;
 
-use std::{fmt::Debug, net::Ipv4Addr, sync::Arc, time::Duration};
+use std::{
+    fmt::Debug,
+    net::Ipv4Addr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 use controllers::RobotController;
 use math::Point2;
@@ -37,6 +42,8 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
             let ball = world.ball.clone();
             for packet in pending_packets_iterator {
                 if let Some(detection) = packet.detection {
+                    let detection_time =
+                        world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
                     if let Some(ball_detection) = detection.balls.get(0) {
                         ball.set_pos(Point2::new(
                             ball_detection.x / DETECTION_SCALING_FACTOR,
@@ -58,7 +65,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         }
                         // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
                         let r = ally_team.get_mut(&rid).unwrap();
-                        r.update_from_packet(ally_detection, &ball);
+                        r.update_from_packet(ally_detection, &ball, detection_time);
                     }
 
                     for ennemy_detection in ennemies {
@@ -70,7 +77,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
                         }
                         // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
                         let r = ennemy_team.get_mut(&rid).unwrap();
-                        r.update_from_packet(ennemy_detection, &ball);
+                        r.update_from_packet(ennemy_detection, &ball, detection_time);
                     }
                 }
                 if let Some(geometry) = packet.geometry {

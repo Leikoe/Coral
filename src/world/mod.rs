@@ -12,6 +12,7 @@ use crate::{
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
+    time::SystemTime,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -22,6 +23,7 @@ pub enum TeamColor {
 
 #[derive(Clone)]
 pub struct World {
+    creation_time: SystemTime,
     pub team_color: TeamColor,
     pub field: Field, // already has light cloning because internal arcs
     pub ball: Ball,   // already has light cloning because internal arcs
@@ -30,8 +32,13 @@ pub struct World {
 }
 
 impl World {
+    pub fn get_creation_time(&self) -> SystemTime {
+        self.creation_time
+    }
+
     pub fn default_with_team_color(team_color: TeamColor) -> Self {
         Self {
+            creation_time: SystemTime::now(),
             team_color,
             field: Field::default(),
             ball: Ball::default(),

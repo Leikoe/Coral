@@ -25,7 +25,7 @@ pub trait ReactiveVec2Ext: Reactive<Vec2> + Sized {
     fn mul(self, rhs: f32) -> impl Reactive<Vec2> {
         move || self.get_reactive() * rhs
     }
-    fn angle(&self) -> f32 {
+    fn angle(&self) -> f64 {
         self.get_reactive().angle()
     }
     fn norm(&self) -> f32 {

@@ -4,11 +4,12 @@ use crabe_async::{
     game_controller::GameController,
     launch_control_thread,
     league_protocols::game_controller_packet::referee::Command,
-    math::Point2,
+    math::{Point2, Vec2},
+    trajectories::{bangbang2d::BangBang2d, Trajectory},
     world::{AvoidanceMode, TeamColor, World},
     CONTROL_PERIOD,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::{join, select, time::sleep};
 
 #[derive(Debug)]
@@ -124,20 +125,29 @@ async fn play(world: World, mut gc: GameController) {
 
     let state = GameState::Halted(HaltedState::Halt);
 
-    let mut interval = tokio::time::interval(CONTROL_PERIOD);
-    loop {
-        // let gc_pending_packets = gc.take_pending_packets().await;
-        // if let Some(p) = gc_pending_packets.last() {
-        //     state = state.update(GameEvent::RefereeCommand(p.command()));
-        //     dbg!(&state);
-        // }
+    // let mut interval = tokio::time::interval(CONTROL_PERIOD);
+    // loop {
+    //     // let gc_pending_packets = gc.take_pending_packets().await;
+    //     // if let Some(p) = gc_pending_packets.last() {
+    //     //     state = state.update(GameEvent::RefereeCommand(p.command()));
+    //     //     dbg!(&state);
+    //     // }
 
-        interval.tick().await; // YIELD
-        let _ = r0
-            .goto(&world, &Point2::zero(), None, AvoidanceMode::AvoidRobots)
-            .await;
-        println!("r{} pos after move = {:?}", r0.get_id(), r0.get_pos());
-    }
+    //     interval.tick().await; // YIELD
+    //     let _ = r0
+    //         .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+    //         .await;
+    // }
+
+    let traj = BangBang2d::new(
+        Point2::zero(),
+        Vec2::new(3., 0.),
+        Point2::new(0., 2.),
+        5.,
+        10.,
+        0.1,
+    );
+    println!("duree totale: {}s", traj.get_total_runtime());
 }
 
 /// Simulation of a real control loop
