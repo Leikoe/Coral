@@ -228,16 +228,22 @@ async fn update_world_with_ally_feedback_forever(
     mut controller: SimRobotController,
 ) {
     loop {
-        while let Ok(feedbacks) = controller.receive_feedback().await {
-            for feedback in feedbacks.feedback {
-                if let Some(robot) = world
-                    .team
-                    .lock()
-                    .unwrap()
-                    .get_mut(&(feedback.id as RobotId))
-                {
-                    robot.set_has_ball(feedback.dribbler_ball_contact());
+        match controller.receive_feedback().await {
+            Ok(feedbacks) => {
+                dbg!(&feedbacks);
+                for feedback in feedbacks.feedback {
+                    if let Some(robot) = world
+                        .team
+                        .lock()
+                        .unwrap()
+                        .get_mut(&(feedback.id as RobotId))
+                    {
+                        robot.set_has_ball(feedback.dribbler_ball_contact());
+                    }
                 }
+            }
+            Err(e) => {
+                eprintln!("error while receiving feedbacks: {:?}", e);
             }
         }
     }
