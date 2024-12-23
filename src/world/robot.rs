@@ -175,6 +175,12 @@ impl<D: RobotData> Robot<D> {
         let dt = detection_time.duration_since(self.get_last_update());
         if !dt.is_zero() {
             let self_pos = *self.pos.lock().unwrap();
+            // if self.get_id() == 3 {
+            //     let diff = detected_pos - self_pos;
+            //     dbg!(detection_time.elapsed().as_secs_f64());
+            //     dbg!(diff); // were we were - were we thought we were
+            // }
+
             // TODO: remove f32 from the project :sob:
             self.set_vel((detected_pos - self_pos) / dt.as_secs_f64() as f32);
         }

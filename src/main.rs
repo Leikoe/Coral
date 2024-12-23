@@ -175,6 +175,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
     let mut vision = Vision::new(None, None, real);
     loop {
         while let Ok(packet) = vision.receive().await {
+            println!("NEW CAM PACKET!");
             let mut ally_team = world.team.lock().unwrap();
             let mut ennemy_team = world.ennemies.lock().unwrap();
             let ball = world.ball.clone();
@@ -200,21 +201,23 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                         ally_team.insert(rid, r);
                     }
                     // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                    let r = ally_team.get_mut(&rid).unwrap();
+                    let r = ally_team
+                        .get_mut(&rid)
+                        .expect("couldn't find a robot which SHOULD have been in our team");
                     r.update_from_packet(ally_detection, &ball, detection_time);
                 }
 
-                for ennemy_detection in ennemies {
-                    let rid = ennemy_detection.robot_id() as u8;
-                    if ennemy_team.get_mut(&rid).is_none() {
-                        println!("[DEBUG] added ennemy {} to the ennemies!", rid);
-                        let r = EnnemyRobot::default_with_id(rid);
-                        ennemy_team.insert(rid, r);
-                    }
-                    // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                    let r = ennemy_team.get_mut(&rid).unwrap();
-                    r.update_from_packet(ennemy_detection, &ball, detection_time);
-                }
+                // for ennemy_detection in ennemies {
+                //     let rid = ennemy_detection.robot_id() as u8;
+                //     if ennemy_team.get_mut(&rid).is_none() {
+                //         println!("[DEBUG] added ennemy {} to the ennemies!", rid);
+                //         let r = EnnemyRobot::default_with_id(rid);
+                //         ennemy_team.insert(rid, r);
+                //     }
+                //     // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                //     let r = ennemy_team.get_mut(&rid).unwrap();
+                //     r.update_from_packet(ennemy_detection, &ball, detection_time);
+                // }
             }
             if let Some(geometry) = packet.geometry {
                 world.field.update_from_packet(geometry.field);

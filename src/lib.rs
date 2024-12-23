@@ -9,20 +9,11 @@ pub mod trajectories;
 pub mod vision;
 pub mod world;
 
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    net::Ipv4Addr,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use controllers::RobotController;
-use league_protocols::simulation_packet::RobotFeedback;
-use math::Point2;
-use tokio::{select, sync::Notify, task::JoinHandle, time::Interval};
-use vision::Vision;
-use world::{AllyRobot, EnnemyRobot, RobotId, TeamColor, World};
+use tokio::{select, sync::Notify, task::JoinHandle};
+use world::{AllyRobot, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 pub const DETECTION_SCALING_FACTOR: f32 = 1000.;
