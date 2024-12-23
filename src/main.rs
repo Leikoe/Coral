@@ -125,29 +125,29 @@ async fn play(world: World, mut gc: GameController) {
 
     let state = GameState::Halted(HaltedState::Halt);
 
-    // let mut interval = tokio::time::interval(CONTROL_PERIOD);
-    // loop {
-    //     // let gc_pending_packets = gc.take_pending_packets().await;
-    //     // if let Some(p) = gc_pending_packets.last() {
-    //     //     state = state.update(GameEvent::RefereeCommand(p.command()));
-    //     //     dbg!(&state);
-    //     // }
+    let mut interval = tokio::time::interval(CONTROL_PERIOD);
+    loop {
+        // let gc_pending_packets = gc.take_pending_packets().await;
+        // if let Some(p) = gc_pending_packets.last() {
+        //     state = state.update(GameEvent::RefereeCommand(p.command()));
+        //     dbg!(&state);
+        // }
 
-    //     interval.tick().await; // YIELD
-    //     let _ = r0
-    //         .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-    //         .await;
-    // }
+        interval.tick().await; // YIELD
+        let _ = r0
+            .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+            .await;
+    }
 
-    let traj = BangBang2d::new(
-        Point2::zero(),
-        Vec2::new(3., 0.),
-        Point2::new(0., 2.),
-        5.,
-        10.,
-        0.1,
-    );
-    println!("duree totale: {}s", traj.get_total_runtime());
+    // let traj = BangBang2d::new(
+    //     Point2::zero(),
+    //     Vec2::new(3., 0.),
+    //     Point2::new(0., 2.),
+    //     5.,
+    //     10.,
+    //     0.1,
+    // );
+    // println!("duree totale: {}s", traj.get_total_runtime());
 }
 
 /// Simulation of a real control loop
