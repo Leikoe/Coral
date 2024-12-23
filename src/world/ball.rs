@@ -8,7 +8,7 @@ use std::{
 pub struct Ball {
     pos: Arc<Mutex<Point2>>,
     vel: Arc<Mutex<Vec2>>,
-    last_update: Arc<Mutex<Instant>>,
+    last_update: Arc<Mutex<Option<f64>>>,
 }
 
 impl Default for Ball {
@@ -22,7 +22,7 @@ impl Ball {
         Self {
             pos: Arc::new(Mutex::new(pos)),
             vel: Arc::new(Mutex::new(vel)),
-            last_update: Arc::new(Mutex::new(Instant::now() - Duration::from_secs(10))),
+            last_update: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -39,12 +39,12 @@ impl Ball {
         *self.vel.lock().unwrap()
     }
 
-    pub fn get_last_update(&self) -> Instant {
+    pub fn get_last_update(&self) -> Option<f64> {
         *self.last_update.lock().unwrap()
     }
 
-    pub fn set_last_update(&self, last_update: Instant) {
-        *self.last_update.lock().unwrap() = last_update;
+    pub fn set_last_update(&self, last_update: f64) {
+        *self.last_update.lock().unwrap() = Some(last_update);
     }
 
     pub fn set_vel(&self, vel: Vec2) {

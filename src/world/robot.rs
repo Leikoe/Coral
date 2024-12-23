@@ -46,7 +46,7 @@ pub struct Robot<D: RobotData> {
     vel: Arc<Mutex<Vec2>>,
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
-    last_update: Arc<Mutex<Instant>>,
+    last_update: Arc<Mutex<Option<f64>>>,
     internal_data: D,
 }
 
@@ -82,7 +82,7 @@ impl<D: RobotData> Robot<D> {
             vel: Arc::new(Mutex::new(Vec2::zero())),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
-            last_update: Arc::new(Mutex::new(Instant::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
+            last_update: Arc::new(Mutex::new(None)),
             internal_data: Default::default(),
         }
     }
@@ -94,7 +94,7 @@ impl<D: RobotData> Robot<D> {
             vel: Default::default(),
             orientation: Default::default(),
             has_ball: Default::default(),
-            last_update: Arc::new(Mutex::new(Instant::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
+            last_update: Arc::new(Mutex::new(None)),
             internal_data: Default::default(),
         }
     }
@@ -127,9 +127,9 @@ impl<D: RobotData> Robot<D> {
 
     pub fn get_pos(&self) -> Point2 {
         let p = *self.pos.lock().unwrap();
-        let dt = self.get_last_update().elapsed();
-        let pos = p + self.get_vel() * dt.as_secs_f32();
-        pos
+        // let dt = self.get_last_update().elapsed();
+        // let pos = p + self.get_vel() * dt.as_secs_f32();
+        p
     }
 
     pub fn set_pos(&mut self, pos: Point2) {
@@ -151,20 +151,20 @@ impl<D: RobotData> Robot<D> {
         *_orientation = orientation;
     }
 
-    pub fn get_last_update(&self) -> Instant {
+    pub fn get_last_update(&self) -> Option<f64> {
         *self.last_update.lock().unwrap()
     }
 
-    pub fn set_last_update(&mut self, last_update: Instant) {
+    pub fn set_last_update(&mut self, last_update: f64) {
         let mut _last_update = self.last_update.lock().unwrap();
-        *_last_update = last_update;
+        *_last_update = Some(last_update);
     }
 
     pub fn update_from_packet(
         &mut self,
         detection: SslDetectionRobot,
         ball: &Ball,
-        detection_time: Instant,
+        t_capture: f64,
     ) {
         let detected_pos = Point2::new(
             detection.x / DETECTION_SCALING_FACTOR,
@@ -172,17 +172,14 @@ impl<D: RobotData> Robot<D> {
         );
         let detected_orientation = detection.orientation();
         self.set_orientation(detected_orientation);
-        let dt = detection_time.duration_since(self.get_last_update());
-        if !dt.is_zero() {
-            let self_pos = *self.pos.lock().unwrap();
-            // if self.get_id() == 3 {
-            //     let diff = detected_pos - self_pos;
-            //     dbg!(detection_time.elapsed().as_secs_f64());
-            //     dbg!(diff); // were we were - were we thought we were
-            // }
+        if let Some(last_t) = self.get_last_update() {
+            let dt = t_capture - last_t;
 
-            // TODO: remove f32 from the project :sob:
-            self.set_vel((detected_pos - self_pos) / dt.as_secs_f64() as f32);
+            if dt.abs() > f64::EPSILON {
+                let self_pos = *self.pos.lock().unwrap();
+                // TODO: remove f32 from the project :sob:
+                self.set_vel((detected_pos - self_pos) / dt as f32);
+            }
         }
 
         self.set_pos(detected_pos);
@@ -194,7 +191,7 @@ impl<D: RobotData> Robot<D> {
         //     is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
         // };
         // self.set_has_ball(has_ball); // handled by robot feedback for allies, TODO: find a way for ennemies
-        self.set_last_update(detection_time);
+        self.set_last_update(t_capture);
     }
 
     fn collides_with_robot(&self, other_pos: Point2) -> bool {

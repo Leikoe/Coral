@@ -263,16 +263,17 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
             let mut ennemy_team = world.ennemies.lock().unwrap();
             let ball = world.ball.clone();
             if let Some(detection) = packet.detection {
-                let detection_time = Instant::now();
-                // world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
+                let detection_time = detection.t_capture;
                 if let Some(ball_detection) = detection.balls.get(0) {
                     let detected_pos = Point2::new(
                         ball_detection.x / DETECTION_SCALING_FACTOR,
                         ball_detection.y / DETECTION_SCALING_FACTOR,
                     );
-                    let dt = detection_time - ball.get_last_update();
+                    if let Some(last_t) = ball.get_last_update() {
+                        let dt = detection_time - last_t;
+                        ball.set_vel((detected_pos - ball.get_pos()) / dt as f32);
+                    }
 
-                    ball.set_vel((detected_pos - ball.get_pos()) / dt.as_secs_f32());
                     ball.set_pos(detected_pos);
                 }
 
