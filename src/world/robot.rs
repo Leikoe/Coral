@@ -52,9 +52,7 @@ pub struct Robot<D: RobotData> {
 
 #[derive(Clone, Default)]
 pub struct AllyData {
-    // target_vel: Arc<Mutex<Vec2>>,
-    trajectory_start: Arc<Mutex<Option<Instant>>>,
-    trajectory: Arc<Mutex<Option<BangBang2d>>>,
+    trajectory: Arc<Mutex<Option<(Instant, BangBang2d)>>>,
     target_angular_vel: Arc<Mutex<f32>>,
     should_dribble: Arc<Mutex<bool>>,
     should_kick: Arc<Mutex<bool>>,
@@ -261,43 +259,26 @@ impl Robot<AllyData> {
         *self.internal_data.should_dribble.lock().unwrap()
     }
 
-    // pub fn get_target_vel(&self) -> Vec2 {
-    //     *self.internal_data.target_vel.lock().unwrap()
-    // }
-
     pub fn get_target_vel(&self) -> Vec2 {
-        match (self.get_trajectory_start(), self.get_trajectory()) {
-            (Some(start), Some(traj)) => {
-                let t = start.elapsed().as_secs_f64();
-                let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
-                traj.get_velocity(t) + p_diff * 0.5
-            }
-            _ => Vec2::zero(),
+        if let Some((traj_start, traj)) = self.get_trajectory() {
+            let t = traj_start.elapsed().as_secs_f64();
+            let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
+            traj.get_velocity(t) + p_diff * 0.5
+        } else {
+            Vec2::zero()
         }
     }
 
-    pub fn get_trajectory(&self) -> Option<BangBang2d> {
+    pub fn get_trajectory(&self) -> Option<(Instant, BangBang2d)> {
         *self.internal_data.trajectory.lock().unwrap()
     }
 
-    pub fn set_trajectory(&self, trajectory: BangBang2d) {
+    pub fn set_trajectory(&self, trajectory_start: Instant, trajectory: BangBang2d) {
         self.internal_data
             .trajectory
             .lock()
             .unwrap()
-            .replace(trajectory);
-    }
-
-    pub fn get_trajectory_start(&self) -> Option<Instant> {
-        *self.internal_data.trajectory_start.lock().unwrap()
-    }
-
-    pub fn set_trajectory_start(&self, trajectory_start: Instant) {
-        self.internal_data
-            .trajectory_start
-            .lock()
-            .unwrap()
-            .replace(trajectory_start);
+            .replace((trajectory_start, trajectory));
     }
 
     pub fn get_target_angular_vel(&self) -> f32 {
@@ -375,8 +356,10 @@ impl Robot<AllyData> {
             && self.get_vel().norm() < 0.01)
         {
             interval.tick().await;
-            self.set_trajectory(self.make_bangbang2d_to(destination.get_reactive()));
-            self.set_trajectory_start(Instant::now());
+            self.set_trajectory(
+                Instant::now(),
+                self.make_bangbang2d_to(destination.get_reactive()),
+            );
 
             // TODO: find a way to handle the angle
             if let Some(angle) = angle {
