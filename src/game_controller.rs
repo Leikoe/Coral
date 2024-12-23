@@ -1,5 +1,6 @@
 use crate::league_protocols::game_controller_packet::Referee;
 use crate::net::multicast_receiver::MulticastUdpReceiver;
+use crate::net::ReceiveError;
 use std::net::Ipv4Addr;
 use std::time::Duration;
 
@@ -27,13 +28,7 @@ impl GameController {
         }
     }
 
-    pub async fn take_pending_packets(&mut self) -> impl Iterator<Item = Referee> {
-        let mut received = Vec::new();
-        while let Ok(Ok(packet)) =
-            tokio::time::timeout(RECEIVE_TIMEOUT, self.socket.receive::<Referee>()).await
-        {
-            received.push(packet);
-        }
-        received.into_iter()
+    pub async fn receive(&mut self) -> Result<Referee, ReceiveError> {
+        self.socket.receive::<Referee>().await
     }
 }

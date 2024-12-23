@@ -3,9 +3,9 @@ use std::{future::Future, net::Ipv4Addr};
 use crate::{
     league_protocols::simulation_packet::{
         robot_move_command, MoveLocalVelocity, MoveWheelVelocity, RobotCommand, RobotControl,
-        RobotMoveCommand,
+        RobotControlResponse, RobotMoveCommand,
     },
-    net::{udp_transceiver::UdpTransceiver, SendError},
+    net::{udp_transceiver::UdpTransceiver, ReceiveError, SendError},
     world::{AllyRobot, TeamColor},
 };
 
@@ -28,27 +28,9 @@ impl SimRobotController {
         }
     }
 
-    //     pub async fn fetch(&mut self) -> FeedbackMap {
-    //         let mut feedback_map: FeedbackMap = Default::default();
-    //         if let Some(packet) = self.socket.receive::<RobotControlResponse>() {
-    //             for robot_feedback in packet.feedback {
-    //                 debug!(
-    //                     "assigned feedback {:?} to robot #{}",
-    //                     robot_feedback, robot_feedback.id
-    //                 );
-
-    //                 feedback_map.insert(
-    //                     robot_feedback.id,
-    //                     Feedback {
-    //                         has_ball: robot_feedback.dribbler_ball_contact(),
-    //                         voltage: Default::default(),
-    //                     },
-    //                 );
-    //             }
-    //         }
-
-    //         feedback_map
-    //     }
+    pub async fn receive_feedback(&mut self) -> Result<RobotControlResponse, ReceiveError> {
+        self.socket.receive::<RobotControlResponse>().await
+    }
 }
 
 impl RobotController<usize, SendError> for SimRobotController {
