@@ -10,7 +10,7 @@ use crabe_async::{
     world::{AllyRobot, AvoidanceMode, EnnemyRobot, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tokio::{join, select, time::sleep};
 
 #[derive(Debug)]
@@ -164,12 +164,13 @@ fn launch_vision_thread(mut world: World, real: bool) {
         let mut vision = Vision::new(None, None, real);
         loop {
             while let Ok(packet) = vision.receive().await {
+                // println!("UPDATE!");
                 let mut ally_team = world.team.lock().unwrap();
                 let mut ennemy_team = world.ennemies.lock().unwrap();
                 let ball = world.ball.clone();
                 if let Some(detection) = packet.detection {
-                    let detection_time =
-                        world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
+                    let detection_time = Instant::now();
+                    // world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
                     if let Some(ball_detection) = detection.balls.get(0) {
                         ball.set_pos(Point2::new(
                             ball_detection.x / DETECTION_SCALING_FACTOR,

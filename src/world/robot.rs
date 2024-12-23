@@ -1,8 +1,13 @@
+use plotters::{
+    chart::{ChartBuilder, LabelAreaPosition},
+    prelude::{BitMapBackend, Circle, IntoDrawingArea},
+    style::{BLUE, WHITE},
+};
 use tokio::{select, time::sleep};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
-    math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Rect, Vec2},
+    math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
@@ -41,7 +46,7 @@ pub struct Robot<D: RobotData> {
     vel: Arc<Mutex<Vec2>>,
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
-    last_update: Arc<Mutex<std::time::SystemTime>>,
+    last_update: Arc<Mutex<Instant>>,
     internal_data: D,
 }
 
@@ -77,7 +82,7 @@ impl<D: RobotData> Robot<D> {
             vel: Arc::new(Mutex::new(Vec2::zero())),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
-            last_update: Arc::new(Mutex::new(SystemTime::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
+            last_update: Arc::new(Mutex::new(Instant::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
             internal_data: Default::default(),
         }
     }
@@ -89,7 +94,7 @@ impl<D: RobotData> Robot<D> {
             vel: Default::default(),
             orientation: Default::default(),
             has_ball: Default::default(),
-            last_update: Arc::new(Mutex::new(SystemTime::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
+            last_update: Arc::new(Mutex::new(Instant::now() - Duration::from_secs(10))), // make the last_update long ago so it's not future to the first vision packets
             internal_data: Default::default(),
         }
     }
@@ -143,11 +148,11 @@ impl<D: RobotData> Robot<D> {
         *_orientation = orientation;
     }
 
-    pub fn get_last_update(&self) -> SystemTime {
+    pub fn get_last_update(&self) -> Instant {
         *self.last_update.lock().unwrap()
     }
 
-    pub fn set_last_update(&mut self, last_update: SystemTime) {
+    pub fn set_last_update(&mut self, last_update: Instant) {
         let mut _last_update = self.last_update.lock().unwrap();
         *_last_update = last_update;
     }
@@ -156,7 +161,7 @@ impl<D: RobotData> Robot<D> {
         &mut self,
         detection: SslDetectionRobot,
         ball: &Ball,
-        detection_time: SystemTime,
+        detection_time: Instant,
     ) {
         let detected_pos = Point2::new(
             detection.x / DETECTION_SCALING_FACTOR,
@@ -164,19 +169,10 @@ impl<D: RobotData> Robot<D> {
         );
         let detected_orientation = detection.orientation();
         self.set_orientation(detected_orientation);
-        match detection_time.duration_since(self.get_last_update()) {
-            Ok(d) => {
-                if !d.is_zero() {
-                    // TODO: remove f32 from the project :sob:
-                    self.set_vel((detected_pos - self.get_pos()) / d.as_secs_f64() as f32);
-                }
-            }
-            Err(e) => {
-                eprintln!(
-                    "[WARNING] error occured while computing duration since last update: {:?}",
-                    e
-                );
-            }
+        let dt = detection_time.duration_since(self.get_last_update());
+        if !dt.is_zero() {
+            // TODO: remove f32 from the project :sob:
+            self.set_vel((detected_pos - self.get_pos()) / dt.as_secs_f64() as f32);
         }
 
         self.set_pos(detected_pos);
@@ -195,8 +191,8 @@ impl<D: RobotData> Robot<D> {
         self.distance_to(&other_pos) < 0.3 // a robot is 10cm radius => 0.3 leaves 10cm between robots
     }
 
-    pub fn pov(&self, pos: Point2) -> Point2 {
-        let to_pos = self.to(&pos).get_reactive();
+    pub fn pov(&self, pos_world: Point2) -> Point2 {
+        let to_pos = self.to(&pos_world).get_reactive();
         let self_orientation = self.get_orientation();
         let inverse_orientation = -self_orientation;
         Point2::new(
@@ -205,12 +201,12 @@ impl<D: RobotData> Robot<D> {
         )
     }
 
-    pub fn pov_vec(&self, vel: Vec2) -> Vec2 {
+    pub fn pov_vec(&self, vel_world: Vec2) -> Vec2 {
         let self_orientation = self.get_orientation();
         let inverse_orientation = -self_orientation;
         Vec2::new(
-            vel.x * inverse_orientation.cos() - vel.y * inverse_orientation.sin(),
-            vel.y * inverse_orientation.cos() + vel.x * inverse_orientation.sin(),
+            vel_world.x * inverse_orientation.cos() - vel_world.y * inverse_orientation.sin(),
+            vel_world.y * inverse_orientation.cos() + vel_world.x * inverse_orientation.sin(),
         )
     }
 
@@ -319,23 +315,56 @@ impl Robot<AllyData> {
     }
 
     fn make_bangbang2d_to(&self, dest: Point2) -> BangBang2d {
-        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 2., 0.1)
+        dbg!(self.get_vel());
+
+        // TODO: REMOVE THIS WAS FOR DEBUG
+        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 3., 2., 0.1)
     }
 
     async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
+        let dest = destination.get_reactive();
+        // let root_area = BitMapBackend::new("bangbang.png", (600, 400)).into_drawing_area();
+        // root_area.fill(&WHITE).unwrap();
+
+        // let to_int = |f: f32| (f * 10.) as i32;
+
+        // let mut ctx = ChartBuilder::on(&root_area)
+        //     .set_label_area_size(LabelAreaPosition::Left, 40)
+        //     .set_label_area_size(LabelAreaPosition::Bottom, 40)
+        //     .caption("Evitement", ("sans-serif", 40))
+        //     .build_cartesian_2d(-40..40, -17..17)
+        //     .unwrap();
+
+        // ctx.configure_mesh().draw().unwrap();
+
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        let mut traj = self.make_bangbang2d_to(destination.get_reactive());
+        let mut traj = self.make_bangbang2d_to(dest);
+        // {
+        //     ctx.draw_series(
+        //         (0..(traj.get_total_runtime() / CONTROL_PERIOD.as_secs_f64()) as usize).map(|t| {
+        //             let p = traj.get_position(t as f64 * CONTROL_PERIOD.as_secs_f64());
+        //             Circle::new((to_int(p.x), to_int(p.y)), 5, &BLUE)
+        //         }),
+        //     )
+        //     .unwrap();
+        // }
         let mut traj_start = Instant::now();
-        while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
+        while !(self.get_pos().distance_to(&dest) < IS_CLOSE_EPSILON
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
             && self.get_vel().norm() < 0.01)
         {
             interval.tick().await;
-            dbg!(self.get_vel());
-            if traj_start.elapsed() > Duration::from_millis(500) {
-                traj = self.make_bangbang2d_to(destination.get_reactive());
+            if traj_start.elapsed() > Duration::from_millis(100) {
+                let t = traj_start.elapsed().as_secs_f64();
+                // dbg!(traj.get_velocity(t));
+
+                let dt = self.get_last_update().elapsed();
+                let pos = self.get_pos() + self.get_vel() * dt.as_secs_f32();
+                println!("generating new traj with info {}s old", dt.as_secs_f64());
+
+                traj = BangBang2d::new(pos, self.get_vel(), dest, 3., 2., 0.1);
                 traj_start = Instant::now();
             }
             let t = traj_start.elapsed().as_secs_f64();

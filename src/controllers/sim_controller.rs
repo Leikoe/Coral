@@ -27,6 +27,28 @@ impl SimRobotController {
                 .expect("Failed to setup simulator robot controller."),
         }
     }
+
+    //     pub async fn fetch(&mut self) -> FeedbackMap {
+    //         let mut feedback_map: FeedbackMap = Default::default();
+    //         if let Some(packet) = self.socket.receive::<RobotControlResponse>() {
+    //             for robot_feedback in packet.feedback {
+    //                 debug!(
+    //                     "assigned feedback {:?} to robot #{}",
+    //                     robot_feedback, robot_feedback.id
+    //                 );
+
+    //                 feedback_map.insert(
+    //                     robot_feedback.id,
+    //                     Feedback {
+    //                         has_ball: robot_feedback.dribbler_ball_contact(),
+    //                         voltage: Default::default(),
+    //                     },
+    //                 );
+    //             }
+    //         }
+
+    //         feedback_map
+    //     }
 }
 
 impl RobotController<usize, SendError> for SimRobotController {
