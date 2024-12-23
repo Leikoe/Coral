@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::{backwards_strike, keep, place_ball, three_attackers_attack},
+    actions::{backwards_strike, do_square_rrt, keep, place_ball, three_attackers_attack},
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
@@ -211,6 +211,7 @@ async fn play(world: World, mut gc: GameController) {
     //     keep(&world, &r0, &ball).await;
     // }
 
+    do_square_rrt(&world, &r0).await;
     backwards_strike(&world, &r0, &ball).await;
 
     // loop {

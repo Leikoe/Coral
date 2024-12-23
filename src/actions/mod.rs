@@ -88,14 +88,6 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     );
 }
 
-// pub async fn do_square(robot: &AllyRobot) {
-//     robot.goto(&Point2::new(0., 1.), None).await;
-//     robot.goto(&Point2::new(1., 1.), None).await;
-//     robot.goto(&Point2::new(1., 0.), None).await;
-//     robot.goto(&Point2::new(0., 0.), None).await;
-//     println!("reached dest!");
-// }
-
 pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ball_pos: &Point2) {
     robot.go_get_ball(world, ball).await;
     let to_ball = robot.to(ball);
@@ -132,9 +124,7 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoE
     ];
 
     for pos in &poses {
-        robot
-            .goto(world, pos, None, AvoidanceMode::AvoidRobotsAndBall)
-            .await?
+        robot.goto(world, pos, None, AvoidanceMode::None).await?
     }
     println!("reached dest!");
     Ok(())

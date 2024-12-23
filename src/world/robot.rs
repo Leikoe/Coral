@@ -261,7 +261,7 @@ impl Robot<AllyData> {
 
     pub fn get_target_vel(&self) -> Vec2 {
         if let Some((traj_start, traj)) = self.get_trajectory() {
-            let t = traj_start.elapsed().as_secs_f64();
+            let t = traj_start.elapsed().as_secs_f64() + Duration::from_millis(16).as_secs_f64();
             let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
             self.pov_vec(traj.get_velocity(t)) + p_diff * 0.5
         } else {
