@@ -4,6 +4,8 @@
 - Rust
 
 # How to run
+
+Run grSim with default ip & ports.
 ```shell
-cargo run
+cargo run # --release
 ```
