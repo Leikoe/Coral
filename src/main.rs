@@ -7,7 +7,7 @@ use crabe_async::{
     math::{Point2, Reactive, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
     vision::Vision,
-    world::{AllyRobot, AvoidanceMode, EnnemyRobot, TeamColor, World},
+    world::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::{
@@ -171,59 +171,76 @@ async fn play(world: World, mut gc: GameController) {
     // println!("duree totale: {}s", traj.get_total_runtime());
 }
 
-fn update_world_with_vision_forever(mut world: World, real: bool) {
-    tokio::spawn(async move {
-        let mut vision = Vision::new(None, None, real);
-        loop {
-            while let Ok(packet) = vision.receive().await {
-                println!("UPDATE!");
-                let mut ally_team = world.team.lock().unwrap();
-                let mut ennemy_team = world.ennemies.lock().unwrap();
-                let ball = world.ball.clone();
-                if let Some(detection) = packet.detection {
-                    let detection_time = Instant::now();
-                    // world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
-                    if let Some(ball_detection) = detection.balls.get(0) {
-                        ball.set_pos(Point2::new(
-                            ball_detection.x / DETECTION_SCALING_FACTOR,
-                            ball_detection.y / DETECTION_SCALING_FACTOR,
-                        ));
-                    }
-
-                    let (allies, ennemies) = match world.team_color {
-                        TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
-                        TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
-                    };
-                    for ally_detection in allies {
-                        let rid = ally_detection.robot_id() as u8;
-                        if ally_team.get_mut(&rid).is_none() {
-                            println!("[DEBUG] added ally {} to the team!", rid);
-                            let r = AllyRobot::default_with_id(rid);
-                            ally_team.insert(rid, r);
-                        }
-                        // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                        let r = ally_team.get_mut(&rid).unwrap();
-                        r.update_from_packet(ally_detection, &ball, detection_time);
-                    }
-
-                    for ennemy_detection in ennemies {
-                        let rid = ennemy_detection.robot_id() as u8;
-                        if ennemy_team.get_mut(&rid).is_none() {
-                            println!("[DEBUG] added ennemy {} to the ennemies!", rid);
-                            let r = EnnemyRobot::default_with_id(rid);
-                            ennemy_team.insert(rid, r);
-                        }
-                        // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                        let r = ennemy_team.get_mut(&rid).unwrap();
-                        r.update_from_packet(ennemy_detection, &ball, detection_time);
-                    }
+async fn update_world_with_vision_forever(mut world: World, real: bool) {
+    let mut vision = Vision::new(None, None, real);
+    loop {
+        while let Ok(packet) = vision.receive().await {
+            let mut ally_team = world.team.lock().unwrap();
+            let mut ennemy_team = world.ennemies.lock().unwrap();
+            let ball = world.ball.clone();
+            if let Some(detection) = packet.detection {
+                let detection_time = Instant::now();
+                // world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
+                if let Some(ball_detection) = detection.balls.get(0) {
+                    ball.set_pos(Point2::new(
+                        ball_detection.x / DETECTION_SCALING_FACTOR,
+                        ball_detection.y / DETECTION_SCALING_FACTOR,
+                    ));
                 }
-                if let Some(geometry) = packet.geometry {
-                    world.field.update_from_packet(geometry.field);
+
+                let (allies, ennemies) = match world.team_color {
+                    TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
+                    TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
+                };
+                for ally_detection in allies {
+                    let rid = ally_detection.robot_id() as u8;
+                    if ally_team.get_mut(&rid).is_none() {
+                        println!("[DEBUG] added ally {} to the team!", rid);
+                        let r = AllyRobot::default_with_id(rid);
+                        ally_team.insert(rid, r);
+                    }
+                    // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                    let r = ally_team.get_mut(&rid).unwrap();
+                    r.update_from_packet(ally_detection, &ball, detection_time);
+                }
+
+                for ennemy_detection in ennemies {
+                    let rid = ennemy_detection.robot_id() as u8;
+                    if ennemy_team.get_mut(&rid).is_none() {
+                        println!("[DEBUG] added ennemy {} to the ennemies!", rid);
+                        let r = EnnemyRobot::default_with_id(rid);
+                        ennemy_team.insert(rid, r);
+                    }
+                    // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                    let r = ennemy_team.get_mut(&rid).unwrap();
+                    r.update_from_packet(ennemy_detection, &ball, detection_time);
+                }
+            }
+            if let Some(geometry) = packet.geometry {
+                world.field.update_from_packet(geometry.field);
+            }
+        }
+    }
+}
+
+async fn update_world_with_ally_feedback_forever(
+    mut world: World,
+    mut controller: SimRobotController,
+) {
+    loop {
+        while let Ok(feedbacks) = controller.receive_feedback().await {
+            for feedback in feedbacks.feedback {
+                if let Some(robot) = world
+                    .team
+                    .lock()
+                    .unwrap()
+                    .get_mut(&(feedback.id as RobotId))
+                {
+                    robot.set_has_ball(feedback.dribbler_ball_contact());
                 }
             }
         }
-    });
+    }
 }
 
 /// Simulation of a real control loop
@@ -234,7 +251,11 @@ async fn main() {
     let world = World::default_with_team_color(color);
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;
-    update_world_with_vision_forever(world.clone(), real);
+    tokio::spawn(update_world_with_vision_forever(world.clone(), real));
+    tokio::spawn(update_world_with_ally_feedback_forever(
+        world.clone(),
+        SimRobotController::new(color).await, // TODO: don't dupe controller like this in a real match setting :c
+    ));
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), controller);
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION

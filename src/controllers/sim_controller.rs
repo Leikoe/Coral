@@ -33,11 +33,11 @@ impl SimRobotController {
     }
 }
 
-impl RobotController<HashMap<RobotId, RobotFeedback>, SendError> for SimRobotController {
+impl RobotController<usize, SendError> for SimRobotController {
     fn send_proper_command_for(
         &mut self,
         robots: impl Iterator<Item = AllyRobot>,
-    ) -> impl Future<Output = Result<HashMap<RobotId, RobotFeedback>, SendError>> + Send {
+    ) -> impl Future<Output = Result<usize, SendError>> + Send {
         let mut packet = RobotControl::default();
 
         for robot in robots {
@@ -80,16 +80,7 @@ impl RobotController<HashMap<RobotId, RobotFeedback>, SendError> for SimRobotCon
             packet.robot_commands.push(robot_command);
         }
 
-        async {
-            self.socket.send(packet).await?;
-            let mut feedback_per_robot = HashMap::new();
-            while let Ok(feedback_packet) = self.receive_feedback().await {
-                for feedback in feedback_packet.feedback {
-                    feedback_per_robot.insert(feedback.id as RobotId, feedback);
-                }
-            }
-            Ok(feedback_per_robot)
-        }
+        self.socket.send(packet)
     }
 
     // workaround for async Drop, to be replaced when std::future::AsyncDrop is stabilized

@@ -27,10 +27,7 @@ use world::{AllyRobot, EnnemyRobot, RobotId, TeamColor, World};
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 pub const DETECTION_SCALING_FACTOR: f32 = 1000.;
 
-async fn control_loop<
-    E: Debug,
-    C: RobotController<HashMap<RobotId, RobotFeedback>, E> + Send + 'static,
->(
+async fn control_loop<E: Debug, C: RobotController<usize, E> + Send + 'static>(
     mut world: World,
     controller: &mut C,
 ) {
@@ -46,22 +43,16 @@ async fn control_loop<
             .values()
             .map(|r| r.clone())
             .collect::<Vec<AllyRobot>>();
-        let feedback = controller
+        let _ = controller
             .send_proper_command_for(robots.into_iter())
             .await
             .expect("couldn't send commands to robots");
-        // for v in feedback.values() {
-        //     dbg!(v);
-        //     if let Some(r) = world.team.lock().unwrap().get_mut(&(v.id as RobotId)) {
-        //         r.set_has_ball(v.dribbler_ball_contact());
-        //     }
-        // }
     }
 }
 
 pub fn launch_control_thread<E: Debug>(
     world: World,
-    mut controller: impl RobotController<HashMap<RobotId, RobotFeedback>, E> + Send + 'static,
+    mut controller: impl RobotController<usize, E> + Send + 'static,
 ) -> (Arc<Notify>, JoinHandle<()>) {
     let notifier = Arc::new(tokio::sync::Notify::new());
     let notifier_clone = notifier.clone();
