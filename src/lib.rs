@@ -118,7 +118,7 @@ async fn control_loop<T, E: Debug, C: RobotController<T, E> + Send + 'static>(
         let _ = controller
             .send_proper_command_for(robots.into_iter())
             .await
-            .expect("couldn't send commands");
+            .expect("couldn't send commands to robots");
     }
 }
 
