@@ -322,21 +322,14 @@ impl Robot<AllyData> {
         angle: Option<f64>,
     ) -> Result<(), String> {
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        let mut traj_start = Instant::now();
-        let mut traj = self.make_bangbang2d_to(destination.get_reactive());
-
         while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             || !angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
         {
             interval.tick().await;
-            println!("vel: {:?} [m/s]", self.get_vel());
-            if traj_start.elapsed() > Duration::from_millis(50) {
-                traj_start = Instant::now();
-                traj = self.make_bangbang2d_to(destination.get_reactive());
-            }
-            let t = traj_start.elapsed().as_secs_f64();
+            let traj = self.make_bangbang2d_to(destination.get_reactive());
+            let t = CONTROL_PERIOD.as_secs_f64();
             let v = self.pov_vec(traj.get_velocity(t));
             let p = traj.get_position(t);
             let p_diff = self.pov_vec(p - self.get_pos());

@@ -135,12 +135,13 @@ async fn play(world: World, mut gc: GameController) {
         //     dbg!(&state);
         // }
 
-        r0.set_target_vel(Vec2::new(1., 0.));
-        // let _ = r0
-        //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-        //     .await;
+        // r0.set_target_vel(Vec2::new(1., 0.));
+        let _ = r0
+            .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+            .await;
     }
 
+    // let start = Instant::now();
     // let traj = BangBang2d::new(
     //     Point2::zero(),
     //     Vec2::new(3., 0.),
@@ -149,6 +150,7 @@ async fn play(world: World, mut gc: GameController) {
     //     10.,
     //     0.1,
     // );
+    // traj.get_velocity(start.elapsed().as_secs_f64());
     // println!("duree totale: {}s", traj.get_total_runtime());
 }
 
