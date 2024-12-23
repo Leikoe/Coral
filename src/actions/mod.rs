@@ -49,9 +49,8 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
 
 pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     let goal = world.get_ennemy_goal_bounding_box().center();
-    let ball_to_goal = ball.to(&goal);
     robot.go_get_ball(world, ball).await;
-    robot
+    let _ = robot
         .goto(
             world,
             &Point2::new(3., 1.),
@@ -75,6 +74,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
 
             if let Ok(i) = ray.intersection_lines(&goal_line) {
                 if i.y < 0.5 && i.y > -0.5 {
+                    // if the intersection to the ennemy side edge of the field is within their goal
                     println!("SHOOT!");
                     robot.kick();
                 }
@@ -83,7 +83,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     };
 
     let p = Point2::new(3., -1.);
-    join!(
+    let (gtr, _) = join!(
         robot.goto(world, &p, Some(0.), AvoidanceMode::None),
         shoot_when_can_score
     );
