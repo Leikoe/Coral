@@ -179,39 +179,39 @@ async fn play(world: World, mut gc: GameController) {
     let mut interval = tokio::time::interval(CONTROL_PERIOD);
     let start = Instant::now();
 
-    loop {
-        let referee_event = gc.receive().await.unwrap();
-        state = state.update(
-            GameEvent::RefereeCommand(referee_event.command()),
-            world.team_color,
-        );
-        println!(
-            "gc: received {:?}, transitionning to {:?}",
-            referee_event.command(),
-            state
-        );
+    // loop {
+    //     let referee_event = gc.receive().await.unwrap();
+    //     state = state.update(
+    //         GameEvent::RefereeCommand(referee_event.command()),
+    //         world.team_color,
+    //     );
+    //     println!(
+    //         "gc: received {:?}, transitionning to {:?}",
+    //         referee_event.command(),
+    //         state
+    //     );
 
-        match state {
-            GameState::Halted(halted_state) => todo!(),
-            GameState::Stopped(stopped_state) => match stopped_state {
-                StoppedState::Stop => todo!(),
-                StoppedState::PrepareKickoff => todo!(),
-                StoppedState::BallPlacementUs => {
-                    if let Some(p) = referee_event.designated_position {
-                        let p = Point2::new(p.x, p.y);
-                        place_ball(&world, &r0, &ball, &p).await;
-                    }
-                }
-                StoppedState::PreparePenalty => todo!(),
-                StoppedState::BallPlacementThem => todo!(),
-            },
-            GameState::Running(running_state) => todo!(),
-        }
+    //     match state {
+    //         GameState::Halted(halted_state) => todo!(),
+    //         GameState::Stopped(stopped_state) => match stopped_state {
+    //             StoppedState::Stop => todo!(),
+    //             StoppedState::PrepareKickoff => todo!(),
+    //             StoppedState::BallPlacementUs => {
+    //                 if let Some(p) = referee_event.designated_position {
+    //                     let p = Point2::new(p.x, p.y);
+    //                     place_ball(&world, &r0, &ball, &p).await;
+    //                 }
+    //             }
+    //             StoppedState::PreparePenalty => todo!(),
+    //             StoppedState::BallPlacementThem => todo!(),
+    //         },
+    //         GameState::Running(running_state) => todo!(),
+    //     }
 
-        keep(&world, &r0, &ball).await;
-    }
+    //     keep(&world, &r0, &ball).await;
+    // }
 
-    // backwards_strike(&world, &r0, &ball).await;
+    backwards_strike(&world, &r0, &ball).await;
 
     // loop {
     //     interval.tick().await; // YIELD
@@ -312,29 +312,6 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
     }
 }
 
-async fn update_world_with_ally_feedback_forever(world: World, mut controller: SimRobotController) {
-    loop {
-        match controller.receive_feedback().await {
-            Ok(feedbacks) => {
-                dbg!(&feedbacks);
-                for feedback in feedbacks.feedback {
-                    if let Some(robot) = world
-                        .team
-                        .lock()
-                        .unwrap()
-                        .get_mut(&(feedback.id as RobotId))
-                    {
-                        robot.set_has_ball(feedback.dribbler_ball_contact());
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("error while receiving feedbacks: {:?}", e);
-            }
-        }
-    }
-}
-
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
@@ -344,10 +321,6 @@ async fn main() {
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;
     tokio::spawn(update_world_with_vision_forever(world.clone(), real));
-    tokio::spawn(update_world_with_ally_feedback_forever(
-        world.clone(),
-        SimRobotController::new(color).await, // TODO: don't dupe controller like this in a real match setting :c
-    ));
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), controller);
     sleep(CONTROL_PERIOD * 10).await; // AWAIT ROBOTS DETECTION

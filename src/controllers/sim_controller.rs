@@ -33,11 +33,20 @@ impl SimRobotController {
     }
 }
 
-impl RobotController<usize, SendError> for SimRobotController {
+#[derive(Debug)]
+pub enum SimRobotControllerError {
+    SendCommandsError(SendError),
+    ReceiveFeedbackError(ReceiveError),
+}
+
+impl RobotController<HashMap<RobotId, RobotFeedback>, SimRobotControllerError>
+    for SimRobotController
+{
     fn send_proper_command_for(
         &mut self,
         robots: impl Iterator<Item = AllyRobot>,
-    ) -> impl Future<Output = Result<usize, SendError>> + Send {
+    ) -> impl Future<Output = Result<HashMap<RobotId, RobotFeedback>, SimRobotControllerError>> + Send
+    {
         let mut packet = RobotControl::default();
 
         for robot in robots {
@@ -80,11 +89,26 @@ impl RobotController<usize, SendError> for SimRobotController {
             packet.robot_commands.push(robot_command);
         }
 
-        self.socket.send(packet)
+        async {
+            self.socket
+                .send(packet)
+                .await
+                .map_err(SimRobotControllerError::SendCommandsError)?;
+            let mut feedback_per_robot = HashMap::new();
+            for feedback in self
+                .receive_feedback()
+                .await
+                .map_err(SimRobotControllerError::ReceiveFeedbackError)?
+                .feedback
+            {
+                feedback_per_robot.insert(feedback.id as RobotId, feedback);
+            }
+            Ok(feedback_per_robot)
+        }
     }
 
     // workaround for async Drop, to be replaced when std::future::AsyncDrop is stabilized
-    async fn close(self) -> Result<(), SendError> {
+    async fn close(self) -> Result<(), SimRobotControllerError> {
         let mut packet = RobotControl::default();
         for rid in 0..16 {
             packet.robot_commands.push(RobotCommand {
@@ -105,6 +129,10 @@ impl RobotController<usize, SendError> for SimRobotController {
             });
         }
         println!("stopping robots..");
-        self.socket.send(packet).await.map(|_| ())
+        self.socket
+            .send(packet)
+            .await
+            .map(|_| ())
+            .map_err(SimRobotControllerError::SendCommandsError)
     }
 }

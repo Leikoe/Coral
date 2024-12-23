@@ -186,14 +186,14 @@ impl<D: RobotData> Robot<D> {
         }
 
         self.set_pos(detected_pos);
-        let has_ball = {
-            let r_to_ball = self.to(ball);
-            let is_facing_ball =
-                angle_difference(r_to_ball.angle() as f64, self.get_orientation() as f64).abs()
-                    < 20.;
-            is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
-        };
-        self.set_has_ball(has_ball);
+        // let has_ball = {
+        //     let r_to_ball = self.to(ball);
+        //     let is_facing_ball =
+        //         angle_difference(r_to_ball.angle() as f64, self.get_orientation() as f64).abs()
+        //             < 20.;
+        //     is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
+        // };
+        // self.set_has_ball(has_ball); // handled by robot feedback for allies, TODO: find a way for ennemies
         self.set_last_update(detection_time);
     }
 
@@ -534,6 +534,7 @@ impl Robot<AllyData> {
 
     // after this call you should have the ball in your spinning dribbler
     pub async fn go_get_ball(&self, world: &World, ball: &Ball) {
+        println!("go_get_ball()");
         self.enable_dribbler();
         let angle = self.to(ball).angle();
         select! {
