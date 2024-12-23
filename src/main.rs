@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::{backwards_strike, three_attackers_attack},
+    actions::{backwards_strike, keep, three_attackers_attack},
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
@@ -177,6 +177,8 @@ async fn play(world: World, mut gc: GameController) {
                 }
             }
         }
+
+        keep(&world, &r0, &ball).await;
     }
 
     // backwards_strike(&world, &r0, &ball).await;
@@ -233,10 +235,14 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                 let detection_time = Instant::now();
                 // world.get_creation_time() + Duration::from_secs_f64(detection.t_capture);
                 if let Some(ball_detection) = detection.balls.get(0) {
-                    ball.set_pos(Point2::new(
+                    let detected_pos = Point2::new(
                         ball_detection.x / DETECTION_SCALING_FACTOR,
                         ball_detection.y / DETECTION_SCALING_FACTOR,
-                    ));
+                    );
+                    let dt = detection_time - ball.get_last_update();
+
+                    ball.set_vel((detected_pos - ball.get_pos()) / dt.as_secs_f32());
+                    ball.set_pos(detected_pos);
                 }
 
                 let (allies, ennemies) = match world.team_color {

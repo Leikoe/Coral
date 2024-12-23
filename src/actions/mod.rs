@@ -10,7 +10,7 @@ use crate::{
 };
 use tokio::{
     join, select,
-    time::{sleep, Interval},
+    time::{interval, sleep, Interval},
 };
 
 pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
@@ -139,6 +139,31 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoE
     }
     println!("reached dest!");
     Ok(())
+}
+
+pub async fn keep(world: &World, robot: &AllyRobot, ball: &Ball) {
+    let top_goal = Point2::new((-world.field.get_field_length() / 2.) as f32, 0.5);
+    let bottom_goal = Point2::new((-world.field.get_field_length() / 2.) as f32, -0.5);
+    let goal_line = Line::new(top_goal, bottom_goal);
+
+    let mut interval = interval(CONTROL_PERIOD);
+    loop {
+        interval.tick().await;
+        let _ = robot
+            .goto(
+                world,
+                &Point2::new(-4.0, ball.get_pos().y),
+                Some(robot.to(ball).angle()),
+                AvoidanceMode::None,
+            )
+            .await;
+
+        // let ball_to_horizon = ball.get_vel() * 1000.;
+        // let ray = Line::new(ball.get_pos(), ball.get_pos() + ball_to_horizon);
+
+        // if
+        // robot.goto(world, , angle, avoidance_mode)
+    }
 }
 
 // TODO: require the fronter to have the ball
