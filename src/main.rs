@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::{backwards_strike, keep, three_attackers_attack},
+    actions::{backwards_strike, keep, place_ball, three_attackers_attack},
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
@@ -16,21 +16,22 @@ use std::{
 };
 use tokio::{join, select, time::sleep};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum HaltedState {
     Halt,
     Timeout,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum StoppedState {
     Stop,
     PrepareKickoff,
-    BallPlacement,
+    BallPlacementUs,
+    BallPlacementThem,
     PreparePenalty,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum RunningState {
     Kickoff,
     FreeKickUs,
@@ -39,7 +40,7 @@ enum RunningState {
     Run,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum GameState {
     Halted(HaltedState),
     Stopped(StoppedState),
@@ -68,10 +69,26 @@ impl GameState {
             //     GameState::Stopped(StoppedState::Stop),
             //     GameEvent::RefereeCommand(Command::PrepareKickoff),
             // ) => GameState::Stopped(StoppedState::PrepareKickoff),
-            // (
-            //     GameState::Stopped(StoppedState::Stop),
-            //     GameEvent::RefereeCommand(Command::BallPlacement),
-            // ) => GameState::Stopped(StoppedState::BallPlacement),
+            (
+                GameState::Stopped(StoppedState::Stop),
+                GameEvent::RefereeCommand(Command::BallPlacementBlue),
+                TeamColor::Blue,
+            ) => GameState::Stopped(StoppedState::BallPlacementUs),
+            (
+                GameState::Stopped(StoppedState::Stop),
+                GameEvent::RefereeCommand(Command::BallPlacementBlue),
+                TeamColor::Yellow,
+            ) => GameState::Stopped(StoppedState::BallPlacementThem),
+            (
+                GameState::Stopped(StoppedState::Stop),
+                GameEvent::RefereeCommand(Command::BallPlacementYellow),
+                TeamColor::Blue,
+            ) => GameState::Stopped(StoppedState::BallPlacementThem),
+            (
+                GameState::Stopped(StoppedState::Stop),
+                GameEvent::RefereeCommand(Command::BallPlacementYellow),
+                TeamColor::Yellow,
+            ) => GameState::Stopped(StoppedState::BallPlacementUs),
             // (
             //     GameState::Stopped(StoppedState::Stop),
             //     GameEvent::RefereeCommand(Command::PreparePenalty),
@@ -109,7 +126,7 @@ impl GameState {
                 _,
             ) => GameState::Running(RunningState::Kickoff),
             (
-                GameState::Stopped(StoppedState::BallPlacement),
+                GameState::Stopped(StoppedState::BallPlacementUs | StoppedState::BallPlacementThem),
                 GameEvent::RefereeCommand(Command::Stop),
                 _,
             ) => GameState::Stopped(StoppedState::Stop),
@@ -146,7 +163,7 @@ impl GameState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum GameEvent {
     RefereeCommand(Command),
 }
@@ -163,19 +180,32 @@ async fn play(world: World, mut gc: GameController) {
     let start = Instant::now();
 
     loop {
-        select! {
-            r = gc.receive() => {
-                match r {
-                    Ok(e) => {
-                        let cmd = e.command();
-                        state = state.update(GameEvent::RefereeCommand(cmd), world.team_color);
-                        println!("gc: received {:?}, transitionning to {:?}", cmd, state);
-                    },
-                    Err(e) => {
-                        eprintln!("gc: error while receiving {:?}", e);
-                    },
+        let referee_event = gc.receive().await.unwrap();
+        state = state.update(
+            GameEvent::RefereeCommand(referee_event.command()),
+            world.team_color,
+        );
+        println!(
+            "gc: received {:?}, transitionning to {:?}",
+            referee_event.command(),
+            state
+        );
+
+        match state {
+            GameState::Halted(halted_state) => todo!(),
+            GameState::Stopped(stopped_state) => match stopped_state {
+                StoppedState::Stop => todo!(),
+                StoppedState::PrepareKickoff => todo!(),
+                StoppedState::BallPlacementUs => {
+                    if let Some(p) = referee_event.designated_position {
+                        let p = Point2::new(p.x, p.y);
+                        place_ball(&world, &r0, &ball, &p).await;
+                    }
                 }
-            }
+                StoppedState::PreparePenalty => todo!(),
+                StoppedState::BallPlacementThem => todo!(),
+            },
+            GameState::Running(running_state) => todo!(),
         }
 
         keep(&world, &r0, &ball).await;
