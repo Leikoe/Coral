@@ -6,6 +6,7 @@ use crate::math::{Point2, Vec2};
 
 use super::{bangbang1d::BangBang1d, Trajectory};
 
+#[derive(Clone, Copy)]
 pub struct BangBang2d {
     x: BangBang1d,
     y: BangBang1d,
