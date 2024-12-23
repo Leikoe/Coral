@@ -3,7 +3,7 @@ mod robot;
 
 // EXPORTS
 pub use ball::Ball;
-pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId};
+pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, GotoError, RobotId};
 
 use crate::{
     league_protocols::vision_packet::SslGeometryFieldSize,

@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     math::{Line, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
-    world::{AllyRobot, AvoidanceMode, Ball, World},
+    world::{AllyRobot, AvoidanceMode, Ball, GotoError, World},
     CONTROL_PERIOD,
 };
 use tokio::{join, select, time::sleep};
@@ -79,7 +79,7 @@ pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ba
         .await;
 }
 
-pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), String> {
+pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoError> {
     let poses = vec![
         Point2::new(-1., 1.),
         Point2::new(1., 1.),

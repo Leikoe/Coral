@@ -219,6 +219,12 @@ impl<D: RobotData> Robot<D> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum GotoError {
+    DestinationOccupiedError,
+    NoPathFoundError(String),
+}
+
 impl Robot<AllyData> {
     pub fn kick(&self) {
         let mut should_kick = self.internal_data.should_kick.lock().unwrap();
@@ -316,11 +322,7 @@ impl Robot<AllyData> {
         BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 2., 0.1)
     }
 
-    async fn goto_straight<T: Reactive<Point2>>(
-        &self,
-        destination: &T,
-        angle: Option<f64>,
-    ) -> Result<(), String> {
+    async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             || !angle
@@ -331,16 +333,13 @@ impl Robot<AllyData> {
             let traj = self.make_bangbang2d_to(destination.get_reactive());
             let t = CONTROL_PERIOD.as_secs_f64();
             let v = self.pov_vec(traj.get_velocity(t));
-            let p = traj.get_position(t);
-            let p_diff = self.pov_vec(p - self.get_pos());
-            self.set_target_vel(v + p_diff * 0.5);
+            self.set_target_vel(v);
             if let Some(angle) = angle {
                 self.set_target_angular_vel(
                     self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
                 );
             }
         }
-        Ok(())
     }
 
     pub async fn goto<T: Reactive<Point2>>(
@@ -349,27 +348,22 @@ impl Robot<AllyData> {
         destination: &T,
         angle: Option<f64>,
         avoidance_mode: AvoidanceMode,
-    ) -> Result<(), String> {
-        // fallback to Robot::goto
+    ) -> Result<(), GotoError> {
+        // if no avoidance_mode: fallback to Robot::goto
         if let AvoidanceMode::None = avoidance_mode {
-            return self.goto_straight(destination, angle).await;
+            return Ok(self.goto_straight(destination, angle).await);
         }
 
         if !self.is_free(self.get_reactive(), world, avoidance_mode) {
-            return Err("we are in a position which isn't free".to_string());
+            return Err(GotoError::DestinationOccupiedError);
         }
-
-        let is_angle_right = || match angle {
-            Some(angle) => {
-                angle_difference(angle as f64, self.get_orientation() as f64).abs() < 0.02
-            }
-            None => true,
-        };
 
         let mut interval = tokio::time::interval(CONTROL_PERIOD);
         // TODO: actually return the followed path or not idk
         'traj: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
-            || !is_angle_right()
+            || !angle
+                .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                .unwrap_or(true)
         {
             interval.tick().await;
             println!("[robot{}] trying to go to dest", self.get_id());
@@ -418,7 +412,8 @@ impl Robot<AllyData> {
                 || field.sample_inside().to_vec(),
                 0.1,
                 RRT_MAX_TRIES,
-            )?;
+            )
+            .map_err(GotoError::NoPathFoundError)?;
             let path: Vec<Point2> = path
                 .into_iter()
                 .skip(1)
