@@ -118,15 +118,6 @@ impl<D: RobotData> Robot<D> {
         *self.orientation.lock().unwrap()
     }
 
-    // pub fn debug_tp(&self, destination: Point2, angle: Option<f32>) {
-    //     let mut pos = self.pos.lock().unwrap();
-    //     *pos = destination;
-
-    //     let angle = angle.unwrap_or(self.get_orientation());
-    //     let mut orientation = self.orientation.lock().unwrap();
-    //     *orientation = angle;
-    // }
-
     pub fn get_pos(&self) -> Point2 {
         *self.pos.lock().unwrap()
     }
@@ -188,7 +179,7 @@ impl<D: RobotData> Robot<D> {
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
         //     let is_facing_ball =
-        //         angle_difference(r_to_ball.angle() as f64, self.get_orientation() as f64).abs()
+        //         angle_difference(r_to_ball.angle(), self.get_orientation()).abs()
         //             < 20.;
         //     is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
         // };
