@@ -20,11 +20,11 @@ use std::{
 use super::Ball;
 
 pub type RobotId = u8;
-const IS_CLOSE_EPSILON: f32 = 0.05;
+const IS_CLOSE_EPSILON: f64 = 0.05;
 const RRT_MAX_TRIES: usize = 1_000;
 
-const GOTO_SPEED: f32 = 1.5;
-const GOTO_ANGULAR_SPEED: f32 = 1.5;
+const GOTO_SPEED: f64 = 1.5;
+const GOTO_ANGULAR_SPEED: f64 = 1.5;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum AvoidanceMode {
@@ -45,7 +45,7 @@ pub struct Robot<D: RobotData> {
     pos: Arc<Mutex<Point2>>,
     vel: Arc<Mutex<Vec2>>,
     angular_vel: Arc<Mutex<f64>>,
-    orientation: Arc<Mutex<f32>>,
+    orientation: Arc<Mutex<f64>>,
     has_ball: Arc<Mutex<bool>>,
     last_update: Arc<Mutex<Option<f64>>>,
     internal_data: D,
@@ -54,7 +54,7 @@ pub struct Robot<D: RobotData> {
 #[derive(Clone, Default)]
 pub struct AllyData {
     target_vel: Arc<Mutex<Vec2>>,
-    target_angular_vel: Arc<Mutex<f32>>,
+    target_angular_vel: Arc<Mutex<f64>>,
     should_dribble: Arc<Mutex<bool>>,
     should_kick: Arc<Mutex<bool>>,
 }
@@ -76,7 +76,7 @@ impl<D: RobotData> Reactive<Point2> for Robot<D> {
 }
 
 impl<D: RobotData> Robot<D> {
-    pub fn new(id: RobotId, pos: Point2, orientation: f32) -> Self {
+    pub fn new(id: RobotId, pos: Point2, orientation: f64) -> Self {
         Self {
             id,
             pos: Arc::new(Mutex::new(pos)),
@@ -114,7 +114,7 @@ impl<D: RobotData> Robot<D> {
         *self.has_ball.lock().unwrap() = has_ball;
     }
 
-    pub fn get_orientation(&self) -> f32 {
+    pub fn get_orientation(&self) -> f64 {
         *self.orientation.lock().unwrap()
     }
 
@@ -151,7 +151,7 @@ impl<D: RobotData> Robot<D> {
         *self.angular_vel.lock().unwrap() = vel;
     }
 
-    pub fn set_orientation(&mut self, orientation: f32) {
+    pub fn set_orientation(&mut self, orientation: f64) {
         *self.orientation.lock().unwrap() = orientation;
     }
 
@@ -170,17 +170,15 @@ impl<D: RobotData> Robot<D> {
         t_capture: f64,
     ) {
         let detected_pos = Point2::new(
-            detection.x / DETECTION_SCALING_FACTOR,
-            detection.y / DETECTION_SCALING_FACTOR,
+            detection.x as f64 / DETECTION_SCALING_FACTOR,
+            detection.y as f64 / DETECTION_SCALING_FACTOR,
         );
-        let detectect_orientation = detection.orientation();
+        let detectect_orientation = detection.orientation() as f64;
         if let Some(last_t) = self.get_last_update() {
             if last_t < t_capture {
                 let dt = t_capture - last_t;
-                self.set_vel((detected_pos - self.get_pos()) / dt as f32); // TODO: remove f32 from the project :sob:
-                self.set_angular_vel(
-                    (detectect_orientation as f64 - self.get_orientation() as f64) / dt,
-                );
+                self.set_vel((detected_pos - self.get_pos()) / dt); // TODO: remove f32 from the project :sob:
+                self.set_angular_vel((detectect_orientation - self.get_orientation()) / dt);
             }
         }
         self.set_last_update(t_capture);
@@ -221,7 +219,7 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn orientation_diff_to(&self, target_orientation: f64) -> f64 {
-        angle_difference(target_orientation, self.get_orientation() as f64)
+        angle_difference(target_orientation, self.get_orientation())
     }
 }
 
@@ -267,11 +265,11 @@ impl Robot<AllyData> {
         *self.internal_data.target_vel.lock().unwrap() = target_vel;
     }
 
-    pub fn get_target_angular_vel(&self) -> f32 {
+    pub fn get_target_angular_vel(&self) -> f64 {
         *self.internal_data.target_angular_vel.lock().unwrap()
     }
 
-    pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
+    pub fn set_target_angular_vel(&self, target_angular_vel: f64) {
         *self.internal_data.target_angular_vel.lock().unwrap() = target_angular_vel;
     }
 
@@ -354,22 +352,17 @@ impl Robot<AllyData> {
                 //     50.,
                 // );
                 // let av = angular_traj.get_velocity(0.075);
-                let av = self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED;
-                self.set_target_angular_vel(av as f32);
+                let av = self.orientation_diff_to(angle) * GOTO_ANGULAR_SPEED;
+                self.set_target_angular_vel(av);
             }
         }
     }
 
     async fn look_at<T: Reactive<Point2>>(&self, destination: &T) {
-        while !(self
-            .orientation_diff_to(self.to(destination).angle() as f64)
-            .abs()
-            < 0.02)
-        {
+        while !(self.orientation_diff_to(self.to(destination).angle()).abs() < 0.02) {
             // TODO: find a way to handle the angle
             self.set_target_angular_vel(
-                self.orientation_diff_to(self.to(destination).angle() as f64) as f32
-                    * GOTO_ANGULAR_SPEED,
+                self.orientation_diff_to(self.to(destination).angle()) * GOTO_ANGULAR_SPEED,
             );
             sleep(Duration::from_millis(50)).await;
         }

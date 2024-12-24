@@ -17,7 +17,7 @@ use tokio::{select, sync::Notify, task::JoinHandle};
 use world::{AllyRobot, RobotId, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
-pub const DETECTION_SCALING_FACTOR: f32 = 1000.;
+pub const DETECTION_SCALING_FACTOR: f64 = 1000.;
 
 async fn control_loop<
     E: Debug,

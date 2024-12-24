@@ -3,12 +3,12 @@ use std::ops::{Add, AddAssign, DivAssign, MulAssign, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct Point2 {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Point2 {
-    pub fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
@@ -20,11 +20,11 @@ impl Point2 {
         rhs - *self
     }
 
-    pub fn from_vec(point: &[f32]) -> Self {
+    pub fn from_vec(point: &[f64]) -> Self {
         Self::new(point[0], point[1])
     }
 
-    pub fn to_vec(self) -> Vec<f32> {
+    pub fn to_vec(self) -> Vec<f64> {
         vec![self.x, self.y]
     }
 }
@@ -101,15 +101,15 @@ impl SubAssign<Vec2> for Point2 {
     }
 }
 
-impl MulAssign<f32> for Point2 {
-    fn mul_assign(&mut self, rhs: f32) {
+impl MulAssign<f64> for Point2 {
+    fn mul_assign(&mut self, rhs: f64) {
         self.x *= rhs;
         self.y *= rhs;
     }
 }
 
-impl DivAssign<f32> for Point2 {
-    fn div_assign(&mut self, rhs: f32) {
+impl DivAssign<f64> for Point2 {
+    fn div_assign(&mut self, rhs: f64) {
         self.x /= rhs;
         self.y /= rhs;
     }

@@ -75,9 +75,9 @@ impl RobotController<HashMap<RobotId, RobotFeedback>, SimRobotControllerError>
                 move_command: Some(RobotMoveCommand {
                     command: Some(robot_move_command::Command::LocalVelocity(
                         MoveLocalVelocity {
-                            forward: target_vel.x,
-                            left: target_vel.y,
-                            angular: robot.get_target_angular_vel(),
+                            forward: target_vel.x as f32,
+                            left: target_vel.y as f32,
+                            angular: robot.get_target_angular_vel() as f32,
                         },
                     )),
                 }),

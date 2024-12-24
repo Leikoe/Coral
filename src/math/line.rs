@@ -36,7 +36,7 @@ impl Line {
         // Calculate cross product to check if lines are parallel
         let cross_product =
             line_direction.x * other_direction.y - line_direction.y * other_direction.x;
-        if cross_product.abs() < f32::EPSILON {
+        if cross_product.abs() < f64::EPSILON {
             return Err(LinesParallelError);
         }
 

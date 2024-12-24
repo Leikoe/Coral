@@ -110,24 +110,18 @@ impl Field {
 
     pub fn get_bounding_box(&self) -> Rect {
         Rect::new(
-            Point2::new(
-                (self.get_field_width() / 2.) as f32,
-                (-self.get_field_length() / 2.) as f32,
-            ),
-            Point2::new(
-                (-self.get_field_width() / 2.0) as f32,
-                (self.get_field_length() / 2.0) as f32,
-            ),
+            Point2::new(self.get_field_width() / 2., -self.get_field_length() / 2.),
+            Point2::new(-self.get_field_width() / 2.0, self.get_field_length() / 2.0),
         )
     }
 
     pub fn get_yellow_goal_bounding_box(&self) -> Rect {
         let x_outer_line = self.get_field_length() / 2.;
         Rect::new(
-            Point2::new(x_outer_line as f32, (self.get_goal_width() / 2.) as f32),
+            Point2::new(x_outer_line, self.get_goal_width() / 2.),
             Point2::new(
-                (x_outer_line + self.get_goal_depth()) as f32,
-                (-self.get_goal_width() / 2.) as f32,
+                x_outer_line + self.get_goal_depth(),
+                -self.get_goal_width() / 2.,
             ),
         )
     }
@@ -136,10 +130,10 @@ impl Field {
         let x_outer_line = -self.get_field_length() / 2.;
         Rect::new(
             Point2::new(
-                (x_outer_line - self.get_goal_depth()) as f32,
-                (self.get_goal_width() / 2.) as f32,
+                x_outer_line - self.get_goal_depth(),
+                self.get_goal_width() / 2.,
             ),
-            Point2::new(x_outer_line as f32, (-self.get_goal_width() / 2.) as f32),
+            Point2::new(x_outer_line, -self.get_goal_width() / 2.),
         )
     }
 }

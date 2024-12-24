@@ -2,12 +2,12 @@ use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(PartialEq, Clone, Copy, Debug, Default)]
 pub struct Vec2 {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Vec2 {
-    pub fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
@@ -15,11 +15,11 @@ impl Vec2 {
         Self::default()
     }
 
-    pub fn from_vec(v: &[f32]) -> Self {
+    pub fn from_vec(v: &[f64]) -> Self {
         Self::new(v[0], v[1])
     }
 
-    pub fn norm(&self) -> f32 {
+    pub fn norm(&self) -> f64 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
@@ -32,7 +32,7 @@ impl Vec2 {
         self.y.atan2(self.x) as f64
     }
 
-    pub fn dot(&self, rhs: Self) -> f32 {
+    pub fn dot(&self, rhs: Self) -> f64 {
         self.x * rhs.x + self.y * rhs.y
     }
 }
@@ -59,10 +59,10 @@ impl Sub for Vec2 {
     }
 }
 
-impl Div<f32> for Vec2 {
+impl Div<f64> for Vec2 {
     type Output = Self;
 
-    fn div(self, rhs: f32) -> Self::Output {
+    fn div(self, rhs: f64) -> Self::Output {
         Self {
             x: self.x / rhs,
             y: self.y / rhs,
@@ -70,10 +70,10 @@ impl Div<f32> for Vec2 {
     }
 }
 
-impl Mul<f32> for Vec2 {
+impl Mul<f64> for Vec2 {
     type Output = Self;
 
-    fn mul(self, rhs: f32) -> Self::Output {
+    fn mul(self, rhs: f64) -> Self::Output {
         Self {
             x: self.x * rhs,
             y: self.y * rhs,

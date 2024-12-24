@@ -28,13 +28,13 @@ pub trait ReactiveVec2Ext: Reactive<Vec2> + Sized {
     fn add<T: Reactive<Vec2>>(&self, rhs: T) -> impl Reactive<Vec2> {
         move || self.get_reactive() + rhs.get_reactive()
     }
-    fn mul(self, rhs: f32) -> impl Reactive<Vec2> {
+    fn mul(self, rhs: f64) -> impl Reactive<Vec2> {
         move || self.get_reactive() * rhs
     }
     fn angle(&self) -> f64 {
         self.get_reactive().angle()
     }
-    fn norm(&self) -> f32 {
+    fn norm(&self) -> f64 {
         self.get_reactive().norm()
     }
 }
@@ -46,7 +46,7 @@ pub trait ReactivePoint2Ext: Reactive<Point2> + Sized {
         move || Point2::to(&self.get_reactive(), rhs.get_reactive())
     }
 
-    fn distance_to<T: Reactive<Point2>>(&self, rhs: &T) -> f32 {
+    fn distance_to<T: Reactive<Point2>>(&self, rhs: &T) -> f64 {
         (rhs.get_reactive() - self.get_reactive()).norm()
     }
 

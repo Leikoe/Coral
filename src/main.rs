@@ -226,8 +226,8 @@ async fn play(world: World, mut gc: GameController) {
                 &world,
                 &|| {
                     Point2::new(
-                        start.elapsed().as_secs_f32().cos() * 1.0,
-                        start.elapsed().as_secs_f32().sin() * 1.0,
+                        start.elapsed().as_secs_f64().cos() * 1.0,
+                        start.elapsed().as_secs_f64().sin() * 1.0,
                     )
                 },
                 None,
@@ -250,12 +250,12 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                 let detection_time = detection.t_capture;
                 if let Some(ball_detection) = detection.balls.get(0) {
                     let detected_pos = Point2::new(
-                        ball_detection.x / DETECTION_SCALING_FACTOR,
-                        ball_detection.y / DETECTION_SCALING_FACTOR,
+                        ball_detection.x as f64 / DETECTION_SCALING_FACTOR,
+                        ball_detection.y as f64 / DETECTION_SCALING_FACTOR,
                     );
                     if let Some(last_t) = ball.get_last_update() {
                         let dt = detection_time - last_t;
-                        ball.set_vel((detected_pos - ball.get_pos()) / dt as f32);
+                        ball.set_vel((detected_pos - ball.get_pos()) / dt);
                     }
                     // println!("{:?}", detected_pos);
                     ball.set_pos(detected_pos);

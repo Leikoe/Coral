@@ -85,18 +85,15 @@ impl BangBang2d {
 
 impl Trajectory<Point2, Vec2> for BangBang2d {
     fn get_position(&self, t: f64) -> Point2 {
-        Point2::new(self.x.get_position(t) as f32, self.y.get_position(t) as f32)
+        Point2::new(self.x.get_position(t), self.y.get_position(t))
     }
 
     fn get_velocity(&self, t: f64) -> Vec2 {
-        Vec2::new(self.x.get_velocity(t) as f32, self.y.get_velocity(t) as f32)
+        Vec2::new(self.x.get_velocity(t), self.y.get_velocity(t))
     }
 
     fn get_acceleration(&self, t: f64) -> Vec2 {
-        Vec2::new(
-            self.x.get_acceleration(t) as f32,
-            self.y.get_acceleration(t) as f32,
-        )
+        Vec2::new(self.x.get_acceleration(t), self.y.get_acceleration(t))
     }
 
     fn get_total_runtime(&self) -> f64 {
@@ -107,7 +104,7 @@ impl Trajectory<Point2, Vec2> for BangBang2d {
         self.get_time_sections()
             .map(|t| self.get_velocity(t))
             .max_by(|v1, v2| v1.norm().partial_cmp(&v2.norm()).unwrap_or(Ordering::Equal))
-            .map(|v| v.norm() as f64)
+            .map(|v| v.norm())
     }
 
     fn get_time_sections(&self) -> impl Iterator<Item = f64> {

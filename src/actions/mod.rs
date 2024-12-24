@@ -59,8 +59,8 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
         )
         .await;
 
-    let top_goal = Point2::new((world.field.get_field_length() / 2.) as f32, 0.5);
-    let bottom_goal = Point2::new((world.field.get_field_length() / 2.) as f32, -0.5);
+    let top_goal = Point2::new(world.field.get_field_length() / 2., 0.5);
+    let bottom_goal = Point2::new(world.field.get_field_length() / 2., -0.5);
     let goal_line = Line::new(top_goal, bottom_goal);
     let shoot_when_can_score = async {
         let notifier = world.get_update_notifier();
@@ -134,8 +134,8 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoE
 }
 
 pub async fn keep(world: &World, robot: &AllyRobot, ball: &Ball) {
-    let top_goal = Point2::new((-world.field.get_field_length() / 2.) as f32, 0.5);
-    let bottom_goal = Point2::new((-world.field.get_field_length() / 2.) as f32, -0.5);
+    let top_goal = Point2::new(-world.field.get_field_length() / 2., 0.5);
+    let bottom_goal = Point2::new(-world.field.get_field_length() / 2., -0.5);
     let goal_line = Line::new(top_goal, bottom_goal);
 
     loop {
