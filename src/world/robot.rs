@@ -187,7 +187,7 @@ impl<D: RobotData> Robot<D> {
     }
 
     fn collides_with_robot(&self, other_pos: Point2) -> bool {
-        self.distance_to(&other_pos) < 0.3 // a robot is 10cm radius => 0.3 leaves 10cm between robots
+        self.distance_to(&other_pos) < 0.4 // a robot is 10cm radius => 0.3 leaves 10cm between robots
     }
 
     pub fn pov(&self, pos_world: Point2) -> Point2 {
@@ -325,7 +325,7 @@ impl Robot<AllyData> {
         let is_close = if overshoot_destination.is_none() {
             IS_CLOSE_EPSILON
         } else {
-            IS_CLOSE_EPSILON * 5.
+            IS_CLOSE_EPSILON * 2.
         };
         while !(self.get_pos().distance_to(&destination.get_reactive()) < is_close
             && angle
@@ -384,14 +384,12 @@ impl Robot<AllyData> {
             return Err(GotoError::DestinationOccupiedError);
         }
 
-        let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        // TODO: actually return the followed path or not idk
-        while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
+        'newpath: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
             || !angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
         {
-            interval.tick().await;
+            world.next_update().await;
             println!("[robot{}] trying to go to dest", self.get_id());
             let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
@@ -434,18 +432,23 @@ impl Robot<AllyData> {
                 .enumerate()
                 .map(|(i, p)| (i, p, i == path_len - 1))
             {
+                let t = self.make_bangbang2d_to(p);
+                let t_is_valid = self.is_a_valid_trajectory(&t, world, avoidance_mode);
                 if is_last {
-                    println!("going directly to last point ({})", i);
-                    self.goto_straight(world, &p, angle, None).await;
-                    break;
+                    if t_is_valid {
+                        println!("going directly to last point ({}/{})", i, path_len);
+                        self.goto_straight(world, &p, angle, None).await;
+                        break;
+                    } else {
+                        continue 'newpath;
+                    }
                 }
 
-                let t = self.make_bangbang2d_to(p);
-                if !self.is_a_valid_trajectory(&t, world, avoidance_mode) {
-                    println!("going directly to {}", i - 1);
+                if !t_is_valid {
+                    println!("going directly to {}/{}", i - 1, path_len);
                     // goto the last_p
                     let overshoot_v = (last_p - self.get_pos()).normalized();
-                    let overshoot_p = last_p + overshoot_v;
+                    let overshoot_p = last_p + overshoot_v * 0.5;
                     self.goto_straight(
                         world,
                         &(last_p - overshoot_v * 0.2),
