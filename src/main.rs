@@ -217,23 +217,23 @@ async fn play(world: World, mut gc: GameController) {
 
         // keep(&world, &r0, &ball).await;
 
-        // do_square_rrt(&world, &r0).await;
+        do_square_rrt(&world, &r0).await;
 
         // backwards_strike(&world, &r0, &ball).await;
 
-        let _ = r0
-            .goto(
-                &world,
-                &|| {
-                    Point2::new(
-                        start.elapsed().as_secs_f64().cos() * 1.0,
-                        start.elapsed().as_secs_f64().sin() * 1.0,
-                    )
-                },
-                None,
-                AvoidanceMode::None,
-            )
-            .await;
+        // let _ = r0
+        //     .goto(
+        //         &world,
+        //         &|| {
+        //             Point2::new(
+        //                 start.elapsed().as_secs_f64().cos() * 1.0,
+        //                 start.elapsed().as_secs_f64().sin() * 1.0,
+        //             )
+        //         },
+        //         None,
+        //         AvoidanceMode::None,
+        //     )
+        //     .await;
     }
 }
 

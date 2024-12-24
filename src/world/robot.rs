@@ -369,137 +369,109 @@ impl Robot<AllyData> {
         // if no avoidance_mode: fallback to Robot::goto
         if let AvoidanceMode::None = avoidance_mode {
             return Ok(self.goto_straight(world, destination, angle).await);
-        } else {
-            unimplemented!();
         }
 
-        // if !self.is_free(self.get_reactive(), world, avoidance_mode) {
-        //     return Err(GotoError::DestinationOccupiedError);
-        // }
+        if !self.is_free(self.get_reactive(), world, avoidance_mode) {
+            return Err(GotoError::DestinationOccupiedError);
+        }
 
-        // let mut interval = tokio::time::interval(CONTROL_PERIOD);
-        // // TODO: actually return the followed path or not idk
-        // 'traj: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
-        //     || !angle
-        //         .map(|a| self.orientation_diff_to(a).abs() < 0.02)
-        //         .unwrap_or(true)
-        // {
-        //     interval.tick().await;
-        //     println!("[robot{}] trying to go to dest", self.get_id());
-        //     let start = self.get_pos();
-        //     let goal = destination.get_reactive();
-        //     let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
+        let mut interval = tokio::time::interval(CONTROL_PERIOD);
+        // TODO: actually return the followed path or not idk
+        'traj: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
+            || !angle
+                .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                .unwrap_or(true)
+        {
+            interval.tick().await;
+            println!("[robot{}] trying to go to dest", self.get_id());
+            let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
-        //     let traj = BangBang2d::new(start, Vec2::zero(), goal, 5., 3., 0.1);
-        //     if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
-        //         println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
-        //         let start = Instant::now();
-        //         while start.elapsed().as_secs_f64() < traj.get_total_runtime() {
-        //             interval.tick().await;
-        //             if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
-        //                 println!("detected collision on traj, generating a new path!");
-        //                 continue 'traj; // generate a new path
-        //             }
-        //             let t = start.elapsed().as_secs_f64();
-        //             let v = self.pov_vec(traj.get_velocity(t));
-        //             let p = traj.get_position(t);
-        //             let p_diff = self.pov_vec(p - self.get_pos());
-        //             if p_diff.norm() > 0.5 {
-        //                 println!(
-        //                     "[robot{}] we fell off the traj! (diff={}), trying again!",
-        //                     self.get_id(),
-        //                     p_diff.norm()
-        //                 );
-        //                 // break;
-        //             }
-        //             self.set_target_vel(v + p_diff * 0.5);
-        //             if let Some(angle) = angle {
-        //                 self.set_target_angular_vel(
-        //                     angle_difference(angle as f64, self.get_orientation() as f64) as f32
-        //                         * GOTO_ANGULAR_SPEED,
-        //                 );
-        //             }
-        //         }
-        //         continue;
-        //     }
+            let traj = self.make_bangbang2d_to(destination.get_reactive());
+            if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+                println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
+                self.goto_straight(world, destination, angle).await;
+                break;
+            } else {
+                unimplemented!();
+            }
 
-        //     let start_time = Instant::now();
-        //     let path = rrt::dual_rrt_connect(
-        //         &[start.x, start.y],
-        //         &[goal.x, goal.y],
-        //         |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
-        //         || field.sample_inside().to_vec(),
-        //         0.1,
-        //         RRT_MAX_TRIES,
-        //     )
-        //     .map_err(GotoError::NoPathFoundError)?;
-        //     let path: Vec<Point2> = path
-        //         .into_iter()
-        //         .skip(1)
-        //         .map(|p| Point2::from_vec(&p))
-        //         .collect();
+            // let start_time = Instant::now();
+            // let path = rrt::dual_rrt_connect(
+            //     &[start.x, start.y],
+            //     &[goal.x, goal.y],
+            //     |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
+            //     || field.sample_inside().to_vec(),
+            //     0.1,
+            //     RRT_MAX_TRIES,
+            // )
+            // .map_err(GotoError::NoPathFoundError)?;
+            // let path: Vec<Point2> = path
+            //     .into_iter()
+            //     .skip(1)
+            //     .map(|p| Point2::from_vec(&p))
+            //     .collect();
 
-        //     // uncomment for straight line path testing (bang bang schedule testing)
-        //     // let path = vec![self.get_pos(), destination.get_reactive()];
-        //     let path_len = path.len();
+            // // uncomment for straight line path testing (bang bang schedule testing)
+            // // let path = vec![self.get_pos(), destination.get_reactive()];
+            // let path_len = path.len();
 
-        //     println!(
-        //         "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
-        //         self.get_id(),
-        //         start_time.elapsed().as_millis()
-        //     );
+            // println!(
+            //     "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
+            //     self.get_id(),
+            //     start_time.elapsed().as_millis()
+            // );
 
-        //     let mut last_p = path[0];
-        //     for (i, p) in path.into_iter().enumerate() {
-        //         println!("going to waypoint {}", i);
-        //         'waypoint: loop {
-        //             let is_last_waypoint = i == path_len - 1;
-        //             // we put p further from the robot than it really is to make it go fast :)
-        //             let virtual_p = if is_last_waypoint {
-        //                 p
-        //             } else {
-        //                 p + last_p.to(p)
-        //             };
-        //             let traj = BangBang2d::new(
-        //                 self.get_pos(),
-        //                 self.get_vel(), // TODO: FIX THIS BY USING REAL VEL
-        //                 virtual_p,
-        //                 10.,
-        //                 3.,
-        //                 0.05,
-        //             );
-        //             let start = Instant::now();
-        //             while start.elapsed().as_secs_f64()
-        //                 < traj.get_total_runtime() * if is_last_waypoint { 1. } else { 0.5 }
-        //             {
-        //                 if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
-        //                     println!("detected collision on traj, generating a new path!");
-        //                     continue 'traj; // generate a new path
-        //                 }
-        //                 let t = start.elapsed().as_secs_f64();
-        //                 let v = self.pov_vec(traj.get_velocity(t));
-        //                 let p = traj.get_position(t);
-        //                 let p_diff = self.pov_vec(p - self.get_pos());
-        //                 if p_diff.norm() > 0.5 {
-        //                     println!("we fell off the traj!, trying again!");
-        //                     continue 'waypoint; // generate a new traj from current pos to same waypoint
-        //                 }
-        //                 self.set_target_vel(v + p_diff * 0.5);
-        //                 if let Some(angle) = angle {
-        //                     self.set_target_angular_vel(
-        //                         angle_difference(angle as f64, self.get_orientation() as f64)
-        //                             as f32
-        //                             * GOTO_ANGULAR_SPEED,
-        //                     );
-        //                 }
-        //                 sleep(CONTROL_PERIOD).await;
-        //             }
-        //             break; // we're done with this waypoint
-        //         }
-        //         last_p = p;
-        //     }
-        // }
-        // println!("arrived!");
+            // let mut last_p = path[0];
+            // for (i, p) in path.into_iter().enumerate() {
+            //     println!("going to waypoint {}", i);
+            //     'waypoint: loop {
+            //         let is_last_waypoint = i == path_len - 1;
+            //         // we put p further from the robot than it really is to make it go fast :)
+            //         let virtual_p = if is_last_waypoint {
+            //             p
+            //         } else {
+            //             p + last_p.to(p)
+            //         };
+            //         let traj = BangBang2d::new(
+            //             self.get_pos(),
+            //             self.get_vel(), // TODO: FIX THIS BY USING REAL VEL
+            //             virtual_p,
+            //             10.,
+            //             3.,
+            //             0.05,
+            //         );
+            //         let start = Instant::now();
+            //         while start.elapsed().as_secs_f64()
+            //             < traj.get_total_runtime() * if is_last_waypoint { 1. } else { 0.5 }
+            //         {
+            //             if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+            //                 println!("detected collision on traj, generating a new path!");
+            //                 continue 'traj; // generate a new path
+            //             }
+            //             let t = start.elapsed().as_secs_f64();
+            //             let v = self.pov_vec(traj.get_velocity(t));
+            //             let p = traj.get_position(t);
+            //             let p_diff = self.pov_vec(p - self.get_pos());
+            //             if p_diff.norm() > 0.5 {
+            //                 println!("we fell off the traj!, trying again!");
+            //                 continue 'waypoint; // generate a new traj from current pos to same waypoint
+            //             }
+            //             self.set_target_vel(v + p_diff * 0.5);
+            //             if let Some(angle) = angle {
+            //                 self.set_target_angular_vel(
+            //                     angle_difference(angle as f64, self.get_orientation() as f64)
+            //                         as f32
+            //                         * GOTO_ANGULAR_SPEED,
+            //                 );
+            //             }
+            //             sleep(CONTROL_PERIOD).await;
+            //         }
+            //         break; // we're done with this waypoint
+            //     }
+            //     last_p = p;
+            // }
+        }
+        println!("arrived!");
         Ok(())
     }
 

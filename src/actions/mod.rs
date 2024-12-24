@@ -120,7 +120,9 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoE
     ];
 
     for pos in &poses {
-        robot.goto(world, pos, None, AvoidanceMode::None).await?;
+        robot
+            .goto(world, pos, None, AvoidanceMode::AvoidRobots)
+            .await?;
     }
     println!("reached dest!");
     Ok(())
