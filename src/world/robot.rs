@@ -298,7 +298,7 @@ impl Robot<AllyData> {
         world: &World,
         avoidance_mode: AvoidanceMode,
     ) -> bool {
-        const TIME_STEP: f64 = 0.200; // 200ms as per tiger's tdp
+        const TIME_STEP: f64 = 0.050; // 200ms as per tiger's tdp
         let n_points_to_check: usize = (traj.get_total_runtime() / TIME_STEP) as usize;
         for i in 0..n_points_to_check {
             let t = i as f64 * TIME_STEP;
@@ -320,38 +320,20 @@ impl Robot<AllyData> {
         world: &World,
         destination: &T,
         angle: Option<f64>,
-        overshoot_destination: Option<Point2>,
     ) {
-        let is_close = if overshoot_destination.is_none() {
-            IS_CLOSE_EPSILON
-        } else {
-            IS_CLOSE_EPSILON * 2.
-        };
-        while !(self.get_pos().distance_to(&destination.get_reactive()) < is_close
+        while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
-            && (self.get_vel().norm() < 0.02 || overshoot_destination.is_some()))
+            && self.get_vel().norm() < 0.02)
         {
             world.next_update().await;
-            // let traj = self.make_bangbang2d_to(destination.get_reactive());
-            let traj = if let Some(overshoot_p) = overshoot_destination {
-                self.make_bangbang2d_to(overshoot_p)
-            } else {
-                self.make_bangbang2d_to(destination.get_reactive())
-            };
+            let traj = self.make_bangbang2d_to(destination.get_reactive());
             let v = self.pov_vec(traj.get_velocity(0.075));
             self.set_target_vel(v);
 
             if let Some(angle) = angle {
-                // let angular_traj = BangBang1d::new(
-                //     self.get_orientation() as f64,
-                //     self.get_angular_vel(),
-                //     angle,
-                //     10.,
-                //     50.,
-                // );
-                // let av = angular_traj.get_velocity(0.075);
+                // TODO: find a way to use BangBang1d for orientation
                 let av = self.orientation_diff_to(angle) * GOTO_ANGULAR_SPEED;
                 self.set_target_angular_vel(av);
             }
@@ -368,6 +350,45 @@ impl Robot<AllyData> {
         }
     }
 
+    fn simplify_path(
+        &self,
+        world: &World,
+        avoidance_mode: AvoidanceMode,
+        path: Vec<Point2>,
+    ) -> Vec<Point2> {
+        let mut simplified_path = Vec::new();
+        let path_len = path.len();
+        let mut last_p = self.get_pos();
+        for (i, p, is_last) in path
+            .into_iter()
+            .enumerate()
+            .map(|(i, p)| (i, p, i == path_len - 1))
+        {
+            let t = BangBang2d::new(
+                simplified_path.last().map(|p| *p).unwrap_or(self.get_pos()),
+                Vec2::zero(),
+                p,
+                5.,
+                4.,
+                0.1,
+            );
+            let t_is_valid = self.is_a_valid_trajectory(&t, world, avoidance_mode);
+            if is_last {
+                simplified_path.push(p);
+            }
+
+            if !t_is_valid {
+                println!("skipped to {}", i);
+                simplified_path.push(last_p);
+                last_p = p;
+            } else {
+                last_p = p;
+                continue;
+            }
+        }
+        simplified_path
+    }
+
     pub async fn goto<T: Reactive<Point2>>(
         &self,
         world: &World,
@@ -377,7 +398,7 @@ impl Robot<AllyData> {
     ) -> Result<(), GotoError> {
         // if no avoidance_mode: fallback to Robot::goto
         if let AvoidanceMode::None = avoidance_mode {
-            return Ok(self.goto_straight(world, destination, angle, None).await);
+            return Ok(self.goto_straight(world, destination, angle).await);
         }
 
         if !self.is_free(self.get_reactive(), world, avoidance_mode) {
@@ -396,7 +417,7 @@ impl Robot<AllyData> {
             let traj = self.make_bangbang2d_to(destination.get_reactive());
             if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
                 println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
-                self.goto_straight(world, destination, angle, None).await;
+                self.goto_straight(world, destination, angle).await;
                 break;
             }
 
@@ -410,56 +431,40 @@ impl Robot<AllyData> {
                 RRT_MAX_TRIES,
             )
             .map_err(GotoError::NoPathFoundError)?;
-            let path: Vec<Point2> = path
-                .into_iter()
-                .skip(1)
-                .map(|p| Point2::from_vec(&p))
-                .collect();
-
-            // // uncomment for straight line path testing (bang bang schedule testing)
-            // // let path = vec![self.get_pos(), destination.get_reactive()];
-            let path_len = path.len();
-
             println!(
                 "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
                 self.get_id(),
                 start_time.elapsed().as_millis()
             );
-
-            let mut last_p = self.get_pos();
-            for (i, p, is_last) in path
+            let path_without_current_pos: Vec<Point2> = path
                 .into_iter()
-                .enumerate()
-                .map(|(i, p)| (i, p, i == path_len - 1))
-            {
-                let t = self.make_bangbang2d_to(p);
-                let t_is_valid = self.is_a_valid_trajectory(&t, world, avoidance_mode);
-                if is_last {
-                    if t_is_valid {
-                        println!("going directly to last point ({}/{})", i, path_len);
-                        self.goto_straight(world, &p, angle, None).await;
-                        break;
-                    } else {
+                .skip(1)
+                .map(|p| Point2::from_vec(&p))
+                .collect();
+            let simplified_path =
+                self.simplify_path(world, avoidance_mode, path_without_current_pos);
+
+            for (i, p) in simplified_path.into_iter().enumerate() {
+                println!("going to point {}", i);
+                while !(self.get_pos().distance_to(&p) < IS_CLOSE_EPSILON * 3.
+                    && angle
+                        .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                        .unwrap_or(true))
+                {
+                    world.next_update().await;
+                    let traj = self.make_bangbang2d_to(p);
+                    if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+                        println!("traj is now invalid, generating a new path!");
                         continue 'newpath;
                     }
-                }
+                    let v = self.pov_vec(traj.get_velocity(0.075));
+                    self.set_target_vel(v);
 
-                if !t_is_valid {
-                    println!("going directly to {}/{}", i - 1, path_len);
-                    // goto the last_p
-                    let overshoot_v = (last_p - self.get_pos()).normalized();
-                    let overshoot_p = last_p + overshoot_v * 0.5;
-                    self.goto_straight(
-                        world,
-                        &(last_p - overshoot_v * 0.2),
-                        angle,
-                        Some(overshoot_p),
-                    )
-                    .await;
-                    last_p = p;
-                } else {
-                    last_p = p;
-                    continue;
+                    if let Some(angle) = angle {
+                        // TODO: find a way to use BangBang1d for orientation
+                        let av = self.orientation_diff_to(angle) * GOTO_ANGULAR_SPEED;
+                        self.set_target_angular_vel(av);
+                    }
                 }
             }
         }
