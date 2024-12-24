@@ -347,13 +347,13 @@ impl Robot<AllyData> {
         }
     }
 
-    async fn look_at<T: Reactive<Point2>>(&self, destination: &T) {
+    async fn look_at<T: Reactive<Point2>>(&self, world: &World, destination: &T) {
         while !(self.orientation_diff_to(self.to(destination).angle()).abs() < 0.02) {
             // TODO: find a way to handle the angle
             self.set_target_angular_vel(
                 self.orientation_diff_to(self.to(destination).angle()) * GOTO_ANGULAR_SPEED,
             );
-            sleep(Duration::from_millis(50)).await;
+            world.next_update().await;
         }
     }
 
