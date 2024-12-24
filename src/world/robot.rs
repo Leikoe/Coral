@@ -322,22 +322,24 @@ impl Robot<AllyData> {
         angle: Option<f64>,
         overshoot_destination: Option<Point2>,
     ) {
-        while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
+        let is_close = if overshoot_destination.is_none() {
+            IS_CLOSE_EPSILON
+        } else {
+            IS_CLOSE_EPSILON * 5.
+        };
+        while !(self.get_pos().distance_to(&destination.get_reactive()) < is_close
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
-            && (
-                self.get_vel().norm() < 0.02
-                // || overshoot_destination.is_some()
-            ))
+            && (self.get_vel().norm() < 0.02 || overshoot_destination.is_some()))
         {
             world.next_update().await;
-            let traj = self.make_bangbang2d_to(destination.get_reactive());
-            // let traj = if let Some(overshoot_p) = overshoot_destination {
-            //     self.make_bangbang2d_to(overshoot_p)
-            // } else {
-            //     self.make_bangbang2d_to(destination.get_reactive())
-            // };
+            // let traj = self.make_bangbang2d_to(destination.get_reactive());
+            let traj = if let Some(overshoot_p) = overshoot_destination {
+                self.make_bangbang2d_to(overshoot_p)
+            } else {
+                self.make_bangbang2d_to(destination.get_reactive())
+            };
             let v = self.pov_vec(traj.get_velocity(0.075));
             self.set_target_vel(v);
 
@@ -442,7 +444,15 @@ impl Robot<AllyData> {
                 if !self.is_a_valid_trajectory(&t, world, avoidance_mode) {
                     println!("going directly to {}", i - 1);
                     // goto the last_p
-                    self.goto_straight(world, &last_p, angle, None).await;
+                    let overshoot_v = (last_p - self.get_pos()).normalized();
+                    let overshoot_p = last_p + overshoot_v;
+                    self.goto_straight(
+                        world,
+                        &(last_p - overshoot_v * 0.2),
+                        angle,
+                        Some(overshoot_p),
+                    )
+                    .await;
                     last_p = p;
                 } else {
                     last_p = p;
