@@ -207,55 +207,34 @@ async fn play(world: World, mut gc: GameController) {
     //         },
     //         GameState::Running(running_state) => todo!(),
     //     }
-
-    //     keep(&world, &r0, &ball).await;
     // }
 
     loop {
         interval.tick().await;
+        // let _ = r0
+        //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+        //     .await;
+
         // keep(&world, &r0, &ball).await;
+
         // do_square_rrt(&world, &r0).await;
-        backwards_strike(&world, &r0, &ball).await;
+
+        // backwards_strike(&world, &r0, &ball).await;
+
+        let _ = r0
+            .goto(
+                &world,
+                &|| {
+                    Point2::new(
+                        start.elapsed().as_secs_f32().cos() * 1.0,
+                        start.elapsed().as_secs_f32().sin() * 1.0,
+                    )
+                },
+                None,
+                AvoidanceMode::None,
+            )
+            .await;
     }
-
-    // loop {
-    //     interval.tick().await; // YIELD
-
-    //     // let gc_pending_packets = gc.take_pending_packets().await;
-    //     // if let Some(p) = gc_pending_packets.last() {
-    //     //     state = state.update(GameEvent::RefereeCommand(p.command()));
-    //     //     dbg!(&state);
-    //     // }
-
-    //     // r0.set_target_vel(Vec2::new(1., 0.));
-    //     let _ = r0
-    //         .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-    //         .await;
-    // }
-    // let p = || {
-    //     Point2::new(
-    //         start.elapsed().as_secs_f32().cos() * 1.0,
-    //         start.elapsed().as_secs_f32().sin() * 1.0,
-    //     )
-    // };
-
-    // let _ = r0.goto(&world, &p, None, AvoidanceMode::None).await;
-
-    // let _ = r0
-    //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-    //     .await;
-
-    // let start = Instant::now();
-    // let traj = BangBang2d::new(
-    //     Point2::zero(),
-    //     Vec2::new(3., 0.),
-    //     Point2::new(0., 2.),
-    //     5.,
-    //     10.,
-    //     0.1,
-    // );
-    // traj.get_velocity(start.elapsed().as_secs_f64());
-    // println!("duree totale: {}s", traj.get_total_runtime());
 }
 
 async fn update_world_with_vision_forever(mut world: World, real: bool) {
