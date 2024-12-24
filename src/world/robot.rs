@@ -108,33 +108,28 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn set_has_ball(&mut self, has_ball: bool) {
-        let mut _has_ball = self.has_ball.lock().unwrap();
-        *_has_ball = has_ball;
+        *self.has_ball.lock().unwrap() = has_ball;
     }
 
     pub fn get_orientation(&self) -> f32 {
         *self.orientation.lock().unwrap()
     }
 
-    pub fn debug_tp(&self, destination: Point2, angle: Option<f32>) {
-        let mut pos = self.pos.lock().unwrap();
-        *pos = destination;
+    // pub fn debug_tp(&self, destination: Point2, angle: Option<f32>) {
+    //     let mut pos = self.pos.lock().unwrap();
+    //     *pos = destination;
 
-        let angle = angle.unwrap_or(self.get_orientation());
-        let mut orientation = self.orientation.lock().unwrap();
-        *orientation = angle;
-    }
+    //     let angle = angle.unwrap_or(self.get_orientation());
+    //     let mut orientation = self.orientation.lock().unwrap();
+    //     *orientation = angle;
+    // }
 
     pub fn get_pos(&self) -> Point2 {
-        let p = *self.pos.lock().unwrap();
-        // let dt = self.get_last_update().elapsed();
-        // let pos = p + self.get_vel() * dt.as_secs_f32();
-        p
+        *self.pos.lock().unwrap()
     }
 
     pub fn set_pos(&mut self, pos: Point2) {
-        let mut _pos = self.pos.lock().unwrap();
-        *_pos = pos;
+        *self.pos.lock().unwrap() = pos;
     }
 
     pub fn get_vel(&self) -> Vec2 {
@@ -142,13 +137,11 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn set_vel(&mut self, vel: Vec2) {
-        let mut _vel = self.vel.lock().unwrap();
-        *_vel = vel;
+        *self.vel.lock().unwrap() = vel;
     }
 
     pub fn set_orientation(&mut self, orientation: f32) {
-        let mut _orientation = self.orientation.lock().unwrap();
-        *_orientation = orientation;
+        *self.orientation.lock().unwrap() = orientation;
     }
 
     pub fn get_last_update(&self) -> Option<f64> {
@@ -156,8 +149,7 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn set_last_update(&mut self, last_update: f64) {
-        let mut _last_update = self.last_update.lock().unwrap();
-        *_last_update = Some(last_update);
+        *self.last_update.lock().unwrap() = Some(last_update);
     }
 
     pub fn update_from_packet(
@@ -170,19 +162,17 @@ impl<D: RobotData> Robot<D> {
             detection.x / DETECTION_SCALING_FACTOR,
             detection.y / DETECTION_SCALING_FACTOR,
         );
-        let detected_orientation = detection.orientation();
-        self.set_orientation(detected_orientation);
         if let Some(last_t) = self.get_last_update() {
-            let dt = t_capture - last_t;
-
-            if dt.abs() > f64::EPSILON {
+            if last_t < t_capture {
+                let dt = t_capture - last_t;
                 let self_pos = *self.pos.lock().unwrap();
-                // TODO: remove f32 from the project :sob:
-                self.set_vel((detected_pos - self_pos) / dt as f32);
+                self.set_vel((detected_pos - self_pos) / dt as f32); // TODO: remove f32 from the project :sob:
             }
         }
-
+        self.set_last_update(t_capture);
         self.set_pos(detected_pos);
+        self.set_orientation(detection.orientation());
+
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
         //     let is_facing_ball =
@@ -191,7 +181,6 @@ impl<D: RobotData> Robot<D> {
         //     is_facing_ball && (r_to_ball.norm() < 0.15) // TODO: stop the magic
         // };
         // self.set_has_ball(has_ball); // handled by robot feedback for allies, TODO: find a way for ennemies
-        self.set_last_update(t_capture);
     }
 
     fn collides_with_robot(&self, other_pos: Point2) -> bool {
