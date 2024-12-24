@@ -213,9 +213,9 @@ async fn play(world: World, mut gc: GameController) {
 
     loop {
         interval.tick().await;
-        keep(&world, &r0, &ball).await;
+        // keep(&world, &r0, &ball).await;
         // do_square_rrt(&world, &r0).await;
-        // backwards_strike(&world, &r0, &ball).await;
+        backwards_strike(&world, &r0, &ball).await;
     }
 
     // loop {

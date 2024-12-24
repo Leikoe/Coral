@@ -327,17 +327,15 @@ impl Robot<AllyData> {
             && self.get_vel().norm() < 0.02)
         {
             update_notifier.notified().await;
-            println!("reactive state: {:?}", destination.get_reactive());
             let traj = self.make_bangbang2d_to(destination.get_reactive());
             let v = self.pov_vec(traj.get_velocity(0.075));
             self.set_target_vel(v);
 
-            // TODO: find a way to handle the angle
-            // if let Some(angle) = angle {
-            //     self.set_target_angular_vel(
-            //         self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
-            //     );
-            // }
+            if let Some(angle) = angle {
+                self.set_target_angular_vel(
+                    self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
+                );
+            }
         }
     }
 
