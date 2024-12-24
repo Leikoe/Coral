@@ -63,7 +63,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     let bottom_goal = Point2::new((world.field.get_field_length() / 2.) as f32, -0.5);
     let goal_line = Line::new(top_goal, bottom_goal);
     let shoot_when_can_score = async {
-        let notifier = robot.get_update_notifier();
+        let notifier = world.get_update_notifier();
         loop {
             notifier.notified().await;
             let robot_to_ray_horizon = Vec2::new(
@@ -127,7 +127,7 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoE
     ];
 
     for pos in &poses {
-        robot.goto(world, pos, None, AvoidanceMode::None).await?
+        robot.goto(world, pos, None, AvoidanceMode::None).await?;
     }
     println!("reached dest!");
     Ok(())
@@ -138,9 +138,7 @@ pub async fn keep(world: &World, robot: &AllyRobot, ball: &Ball) {
     let bottom_goal = Point2::new((-world.field.get_field_length() / 2.) as f32, -0.5);
     let goal_line = Line::new(top_goal, bottom_goal);
 
-    let mut interval = interval(CONTROL_PERIOD);
     loop {
-        interval.tick().await;
         let _ = robot
             .goto(
                 world,

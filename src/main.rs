@@ -211,10 +211,11 @@ async fn play(world: World, mut gc: GameController) {
     //     keep(&world, &r0, &ball).await;
     // }
 
-    // do_square_rrt(&world, &r0).await;
     loop {
         interval.tick().await;
-        backwards_strike(&world, &r0, &ball).await;
+        keep(&world, &r0, &ball).await;
+        // do_square_rrt(&world, &r0).await;
+        // backwards_strike(&world, &r0, &ball).await;
     }
 
     // loop {
@@ -259,13 +260,14 @@ async fn play(world: World, mut gc: GameController) {
 
 async fn update_world_with_vision_forever(mut world: World, real: bool) {
     let mut vision = Vision::new(None, None, real);
+    let update_notifier = world.get_update_notifier();
     loop {
         while let Ok(packet) = vision.receive().await {
-            // println!("NEW CAM PACKET!");
             let mut ally_team = world.team.lock().unwrap();
             let mut ennemy_team = world.ennemies.lock().unwrap();
             let ball = world.ball.clone();
             if let Some(detection) = packet.detection {
+                // println!("NEW CAM PACKET!");
                 let detection_time = detection.t_capture;
                 if let Some(ball_detection) = detection.balls.get(0) {
                     let detected_pos = Point2::new(
@@ -276,7 +278,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                         let dt = detection_time - last_t;
                         ball.set_vel((detected_pos - ball.get_pos()) / dt as f32);
                     }
-
+                    // println!("{:?}", detected_pos);
                     ball.set_pos(detected_pos);
                 }
 
@@ -298,17 +300,18 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                     r.update_from_packet(ally_detection, &ball, detection_time);
                 }
 
-                for ennemy_detection in ennemies {
-                    let rid = ennemy_detection.robot_id() as u8;
-                    if ennemy_team.get_mut(&rid).is_none() {
-                        println!("[DEBUG] added ennemy {} to the ennemies!", rid);
-                        let r = EnnemyRobot::default_with_id(rid);
-                        ennemy_team.insert(rid, r);
-                    }
-                    // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                    let r = ennemy_team.get_mut(&rid).unwrap();
-                    r.update_from_packet(ennemy_detection, &ball, detection_time);
-                }
+                // for ennemy_detection in ennemies {
+                //     let rid = ennemy_detection.robot_id() as u8;
+                //     if ennemy_team.get_mut(&rid).is_none() {
+                //         println!("[DEBUG] added ennemy {} to the ennemies!", rid);
+                //         let r = EnnemyRobot::default_with_id(rid);
+                //         ennemy_team.insert(rid, r);
+                //     }
+                //     // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
+                //     let r = ennemy_team.get_mut(&rid).unwrap();
+                //     r.update_from_packet(ennemy_detection, &ball, detection_time);
+                // }
+                update_notifier.notify_waiters();
             }
             if let Some(geometry) = packet.geometry {
                 world.field.update_from_packet(geometry.field);

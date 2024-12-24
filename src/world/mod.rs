@@ -4,6 +4,7 @@ mod robot;
 // EXPORTS
 pub use ball::Ball;
 pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, GotoError, RobotId};
+use tokio::sync::Notify;
 
 use crate::{
     league_protocols::vision_packet::SslGeometryFieldSize,
@@ -24,6 +25,7 @@ pub enum TeamColor {
 #[derive(Clone)]
 pub struct World {
     creation_time: SystemTime,
+    update_notifier: Arc<Notify>,
     pub team_color: TeamColor,
     pub field: Field, // already has light cloning because internal arcs
     pub ball: Ball,   // already has light cloning because internal arcs
@@ -36,9 +38,14 @@ impl World {
         self.creation_time
     }
 
+    pub fn get_update_notifier(&self) -> Arc<Notify> {
+        self.update_notifier.clone()
+    }
+
     pub fn default_with_team_color(team_color: TeamColor) -> Self {
         Self {
             creation_time: SystemTime::now(),
+            update_notifier: Arc::new(Notify::new()),
             team_color,
             field: Field::default(),
             ball: Ball::default(),

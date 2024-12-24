@@ -47,13 +47,12 @@ pub struct Robot<D: RobotData> {
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
     last_update: Arc<Mutex<Option<f64>>>,
-    update_notifier: Arc<Notify>,
     internal_data: D,
 }
 
 #[derive(Clone, Default)]
 pub struct AllyData {
-    trajectory: Arc<Mutex<Option<(Instant, BangBang2d)>>>,
+    target_vel: Arc<Mutex<Vec2>>,
     target_angular_vel: Arc<Mutex<f32>>,
     should_dribble: Arc<Mutex<bool>>,
     should_kick: Arc<Mutex<bool>>,
@@ -84,7 +83,6 @@ impl<D: RobotData> Robot<D> {
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
             last_update: Arc::new(Mutex::new(None)),
-            update_notifier: Arc::new(Notify::new()),
             internal_data: Default::default(),
         }
     }
@@ -97,7 +95,6 @@ impl<D: RobotData> Robot<D> {
             orientation: Default::default(),
             has_ball: Default::default(),
             last_update: Arc::new(Mutex::new(None)),
-            update_notifier: Arc::new(Notify::new()),
             internal_data: Default::default(),
         }
     }
@@ -176,8 +173,6 @@ impl<D: RobotData> Robot<D> {
         self.set_pos(detected_pos);
         self.set_orientation(detection.orientation());
 
-        self.get_update_notifier().notify_waiters();
-
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
         //     let is_facing_ball =
@@ -213,10 +208,6 @@ impl<D: RobotData> Robot<D> {
 
     pub fn orientation_diff_to(&self, target_orientation: f64) -> f64 {
         angle_difference(target_orientation, self.get_orientation() as f64)
-    }
-
-    pub fn get_update_notifier(&self) -> Arc<Notify> {
-        self.update_notifier.clone()
     }
 }
 
@@ -255,25 +246,11 @@ impl Robot<AllyData> {
     }
 
     pub fn get_target_vel(&self) -> Vec2 {
-        if let Some((traj_start, traj)) = self.get_trajectory() {
-            let t = 0.075;
-            // let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
-            self.pov_vec(traj.get_velocity(t)) // + p_diff * 0.5
-        } else {
-            Vec2::zero()
-        }
+        *self.internal_data.target_vel.lock().unwrap()
     }
 
-    pub fn get_trajectory(&self) -> Option<(Instant, BangBang2d)> {
-        *self.internal_data.trajectory.lock().unwrap()
-    }
-
-    pub fn set_trajectory(&self, trajectory_start: Instant, trajectory: BangBang2d) {
-        self.internal_data
-            .trajectory
-            .lock()
-            .unwrap()
-            .replace((trajectory_start, trajectory));
+    pub fn set_target_vel(&self, target_vel: Vec2) {
+        *self.internal_data.target_vel.lock().unwrap() = target_vel;
     }
 
     pub fn get_target_angular_vel(&self) -> f32 {
@@ -281,8 +258,7 @@ impl Robot<AllyData> {
     }
 
     pub fn set_target_angular_vel(&self, target_angular_vel: f32) {
-        let mut self_target_angular_vel = self.internal_data.target_angular_vel.lock().unwrap();
-        *self_target_angular_vel = target_angular_vel;
+        *self.internal_data.target_angular_vel.lock().unwrap() = target_angular_vel;
     }
 
     fn is_free(&self, pos: Point2, world: &World, avoidance_mode: AvoidanceMode) -> bool {
@@ -336,8 +312,13 @@ impl Robot<AllyData> {
         BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 4., 0.1)
     }
 
-    async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
-        let update_notifier = self.get_update_notifier();
+    async fn goto_straight<T: Reactive<Point2>>(
+        &self,
+        world: &World,
+        destination: &T,
+        angle: Option<f64>,
+    ) {
+        let update_notifier = world.get_update_notifier();
 
         while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle
@@ -346,17 +327,17 @@ impl Robot<AllyData> {
             && self.get_vel().norm() < 0.02)
         {
             update_notifier.notified().await;
-            self.set_trajectory(
-                Instant::now(),
-                self.make_bangbang2d_to(destination.get_reactive()),
-            );
+            println!("reactive state: {:?}", destination.get_reactive());
+            let traj = self.make_bangbang2d_to(destination.get_reactive());
+            let v = self.pov_vec(traj.get_velocity(0.075));
+            self.set_target_vel(v);
 
             // TODO: find a way to handle the angle
-            if let Some(angle) = angle {
-                self.set_target_angular_vel(
-                    self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
-                );
-            }
+            // if let Some(angle) = angle {
+            //     self.set_target_angular_vel(
+            //         self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
+            //     );
+            // }
         }
     }
 
@@ -384,7 +365,7 @@ impl Robot<AllyData> {
     ) -> Result<(), GotoError> {
         // if no avoidance_mode: fallback to Robot::goto
         if let AvoidanceMode::None = avoidance_mode {
-            return Ok(self.goto_straight(destination, angle).await);
+            return Ok(self.goto_straight(world, destination, angle).await);
         } else {
             unimplemented!();
         }
