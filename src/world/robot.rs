@@ -3,7 +3,7 @@ use plotters::{
     prelude::{BitMapBackend, Circle, IntoDrawingArea},
     style::{BLUE, WHITE},
 };
-use tokio::{select, time::sleep};
+use tokio::{select, sync::Notify, time::sleep};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
@@ -47,6 +47,7 @@ pub struct Robot<D: RobotData> {
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
     last_update: Arc<Mutex<Option<f64>>>,
+    update_notifier: Arc<Notify>,
     internal_data: D,
 }
 
@@ -83,6 +84,7 @@ impl<D: RobotData> Robot<D> {
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
             last_update: Arc::new(Mutex::new(None)),
+            update_notifier: Arc::new(Notify::new()),
             internal_data: Default::default(),
         }
     }
@@ -95,6 +97,7 @@ impl<D: RobotData> Robot<D> {
             orientation: Default::default(),
             has_ball: Default::default(),
             last_update: Arc::new(Mutex::new(None)),
+            update_notifier: Arc::new(Notify::new()),
             internal_data: Default::default(),
         }
     }
@@ -173,6 +176,8 @@ impl<D: RobotData> Robot<D> {
         self.set_pos(detected_pos);
         self.set_orientation(detection.orientation());
 
+        self.get_update_notifier().notify_waiters();
+
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
         //     let is_facing_ball =
@@ -208,6 +213,10 @@ impl<D: RobotData> Robot<D> {
 
     pub fn orientation_diff_to(&self, target_orientation: f64) -> f64 {
         angle_difference(target_orientation, self.get_orientation() as f64)
+    }
+
+    pub fn get_update_notifier(&self) -> Arc<Notify> {
+        self.update_notifier.clone()
     }
 }
 
@@ -247,7 +256,7 @@ impl Robot<AllyData> {
 
     pub fn get_target_vel(&self) -> Vec2 {
         if let Some((traj_start, traj)) = self.get_trajectory() {
-            let t = traj_start.elapsed().as_secs_f64() + Duration::from_millis(16).as_secs_f64();
+            let t = 0.05;
             let p_diff = self.pov_vec(traj.get_position(t) - self.get_pos());
             self.pov_vec(traj.get_velocity(t)) + p_diff * 0.5
         } else {
@@ -328,7 +337,7 @@ impl Robot<AllyData> {
     }
 
     async fn goto_straight<T: Reactive<Point2>>(&self, destination: &T, angle: Option<f64>) {
-        let mut interval = tokio::time::interval(Duration::from_millis(200));
+        let update_notifier = self.get_update_notifier();
 
         while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle
@@ -336,7 +345,7 @@ impl Robot<AllyData> {
                 .unwrap_or(true)
             && self.get_vel().norm() < 0.01)
         {
-            interval.tick().await;
+            update_notifier.notified().await;
             println!("recomputed!");
             self.set_trajectory(
                 Instant::now(),
