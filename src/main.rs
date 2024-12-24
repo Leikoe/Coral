@@ -211,23 +211,23 @@ async fn play(world: World, mut gc: GameController) {
     //     keep(&world, &r0, &ball).await;
     // }
 
-    do_square_rrt(&world, &r0).await;
-    backwards_strike(&world, &r0, &ball).await;
+    // do_square_rrt(&world, &r0).await;
+    // backwards_strike(&world, &r0, &ball).await;
 
-    // loop {
-    //     interval.tick().await; // YIELD
+    loop {
+        interval.tick().await; // YIELD
 
-    //     // let gc_pending_packets = gc.take_pending_packets().await;
-    //     // if let Some(p) = gc_pending_packets.last() {
-    //     //     state = state.update(GameEvent::RefereeCommand(p.command()));
-    //     //     dbg!(&state);
-    //     // }
+        // let gc_pending_packets = gc.take_pending_packets().await;
+        // if let Some(p) = gc_pending_packets.last() {
+        //     state = state.update(GameEvent::RefereeCommand(p.command()));
+        //     dbg!(&state);
+        // }
 
-    //     // r0.set_target_vel(Vec2::new(1., 0.));
-    //     let _ = r0
-    //         .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
-    //         .await;
-    // }
+        // r0.set_target_vel(Vec2::new(1., 0.));
+        let _ = r0
+            .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
+            .await;
+    }
     // let p = || {
     //     Point2::new(
     //         start.elapsed().as_secs_f32().cos() * 1.0,
