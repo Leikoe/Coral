@@ -48,6 +48,7 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
 }
 
 pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
+    println!("backwards_strike()");
     robot.go_get_ball(world, ball).await;
     let _ = robot
         .goto(
@@ -62,9 +63,9 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     let bottom_goal = Point2::new((world.field.get_field_length() / 2.) as f32, -0.5);
     let goal_line = Line::new(top_goal, bottom_goal);
     let shoot_when_can_score = async {
-        let mut interval = tokio::time::interval(Duration::from_millis(50));
+        let notifier = robot.get_update_notifier();
         loop {
-            interval.tick().await;
+            notifier.notified().await;
             let robot_to_ray_horizon = Vec2::new(
                 1000. * robot.get_orientation().cos(),
                 1000. * robot.get_orientation().sin(),
@@ -76,6 +77,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
                     // if the intersection to the ennemy side edge of the field is within their goal
                     println!("SHOOT!");
                     robot.kick();
+                    break;
                 }
             }
         }
@@ -86,6 +88,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
         robot.goto(world, &p, Some(0.), AvoidanceMode::None),
         shoot_when_can_score
     );
+    println!("done");
 }
 
 pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ball_pos: &Point2) {

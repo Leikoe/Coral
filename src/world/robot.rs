@@ -343,10 +343,9 @@ impl Robot<AllyData> {
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
-            && self.get_vel().norm() < 0.01)
+            && self.get_vel().norm() < 0.02)
         {
             update_notifier.notified().await;
-            println!("recomputed!");
             self.set_trajectory(
                 Instant::now(),
                 self.make_bangbang2d_to(destination.get_reactive()),
@@ -532,17 +531,21 @@ impl Robot<AllyData> {
         println!("go_get_ball()");
         self.enable_dribbler();
         let angle = self.to(ball).angle();
-        select! {
-            _ = self
-                .goto(
-                    world,
-                    ball,
-                    Some(angle),
-                    AvoidanceMode::None, // TODO: fix this when avoidance works again
-                ) => {}
-            _ = self.wait_until_has_ball() => {}
-        };
-        sleep(Duration::from_millis(200)).await;
+        while !self.has_ball() {
+            select! {
+                _ = self
+                    .goto(
+                        world,
+                        ball,
+                        Some(angle),
+                        AvoidanceMode::None, // TODO: fix this when avoidance works again
+                    ) => {}
+                _ = self.wait_until_has_ball() => {
+                    println!("we got ball");
+                }
+            };
+        }
+        sleep(Duration::from_millis(100)).await;
     }
 
     pub async fn pass_to(&self, world: &World, receiver: &AllyRobot) -> Result<(), String> {
