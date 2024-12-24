@@ -321,15 +321,13 @@ impl Robot<AllyData> {
         destination: &T,
         angle: Option<f64>,
     ) {
-        let update_notifier = world.get_update_notifier();
-
         while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                 .unwrap_or(true)
             && self.get_vel().norm() < 0.02)
         {
-            update_notifier.notified().await;
+            world.next_update().await;
             let traj = self.make_bangbang2d_to(destination.get_reactive());
             let v = self.pov_vec(traj.get_velocity(0.075));
             self.set_target_vel(v);

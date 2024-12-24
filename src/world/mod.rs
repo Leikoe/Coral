@@ -42,6 +42,10 @@ impl World {
         self.update_notifier.clone()
     }
 
+    pub async fn next_update(&self) {
+        self.update_notifier.notified().await
+    }
+
     pub fn default_with_team_color(team_color: TeamColor) -> Self {
         Self {
             creation_time: SystemTime::now(),

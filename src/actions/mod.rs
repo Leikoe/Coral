@@ -56,9 +56,8 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
     let bottom_goal = Point2::new(world.field.get_field_length() / 2., -0.5);
     let goal_line = Line::new(top_goal, bottom_goal);
     let shoot_when_can_score = async {
-        let notifier = world.get_update_notifier();
         loop {
-            notifier.notified().await;
+            world.next_update().await;
             let robot_to_ray_horizon = Vec2::new(
                 1000. * robot.get_orientation().cos(),
                 1000. * robot.get_orientation().sin(),
