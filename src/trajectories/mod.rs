@@ -1,4 +1,4 @@
-mod bangbang1d;
+pub mod bangbang1d;
 pub mod bangbang2d;
 
 pub trait Trajectory<P, V> {

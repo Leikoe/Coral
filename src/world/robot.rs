@@ -8,7 +8,7 @@ use tokio::{select, sync::Notify, time::sleep};
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
     math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
-    trajectories::{bangbang2d::BangBang2d, Trajectory},
+    trajectories::{bangbang1d::BangBang1d, bangbang2d::BangBang2d, Trajectory},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
@@ -44,6 +44,7 @@ pub struct Robot<D: RobotData> {
     id: RobotId,
     pos: Arc<Mutex<Point2>>,
     vel: Arc<Mutex<Vec2>>,
+    angular_vel: Arc<Mutex<f64>>,
     orientation: Arc<Mutex<f32>>,
     has_ball: Arc<Mutex<bool>>,
     last_update: Arc<Mutex<Option<f64>>>,
@@ -80,6 +81,7 @@ impl<D: RobotData> Robot<D> {
             id,
             pos: Arc::new(Mutex::new(pos)),
             vel: Arc::new(Mutex::new(Vec2::zero())),
+            angular_vel: Arc::new(Mutex::new(0.)),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
             last_update: Arc::new(Mutex::new(None)),
@@ -92,6 +94,7 @@ impl<D: RobotData> Robot<D> {
             id,
             pos: Default::default(),
             vel: Default::default(),
+            angular_vel: Default::default(),
             orientation: Default::default(),
             has_ball: Default::default(),
             last_update: Arc::new(Mutex::new(None)),
@@ -140,6 +143,14 @@ impl<D: RobotData> Robot<D> {
         *self.vel.lock().unwrap() = vel;
     }
 
+    pub fn get_angular_vel(&self) -> f64 {
+        *self.angular_vel.lock().unwrap()
+    }
+
+    pub fn set_angular_vel(&mut self, vel: f64) {
+        *self.angular_vel.lock().unwrap() = vel;
+    }
+
     pub fn set_orientation(&mut self, orientation: f32) {
         *self.orientation.lock().unwrap() = orientation;
     }
@@ -162,16 +173,19 @@ impl<D: RobotData> Robot<D> {
             detection.x / DETECTION_SCALING_FACTOR,
             detection.y / DETECTION_SCALING_FACTOR,
         );
+        let detectect_orientation = detection.orientation();
         if let Some(last_t) = self.get_last_update() {
             if last_t < t_capture {
                 let dt = t_capture - last_t;
-                let self_pos = *self.pos.lock().unwrap();
-                self.set_vel((detected_pos - self_pos) / dt as f32); // TODO: remove f32 from the project :sob:
+                self.set_vel((detected_pos - self.get_pos()) / dt as f32); // TODO: remove f32 from the project :sob:
+                self.set_angular_vel(
+                    (detectect_orientation as f64 - self.get_orientation() as f64) / dt,
+                );
             }
         }
         self.set_last_update(t_capture);
         self.set_pos(detected_pos);
-        self.set_orientation(detection.orientation());
+        self.set_orientation(detectect_orientation);
 
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
@@ -332,9 +346,16 @@ impl Robot<AllyData> {
             self.set_target_vel(v);
 
             if let Some(angle) = angle {
-                self.set_target_angular_vel(
-                    self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED,
-                );
+                // let angular_traj = BangBang1d::new(
+                //     self.get_orientation() as f64,
+                //     self.get_angular_vel(),
+                //     angle,
+                //     10.,
+                //     50.,
+                // );
+                // let av = angular_traj.get_velocity(0.075);
+                let av = self.orientation_diff_to(angle) as f32 * GOTO_ANGULAR_SPEED;
+                self.set_target_angular_vel(av as f32);
             }
         }
     }
