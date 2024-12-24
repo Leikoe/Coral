@@ -1,17 +1,10 @@
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::time::Duration;
 
 use crate::{
     math::{Line, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
     world::{AllyRobot, AvoidanceMode, Ball, GotoError, World},
-    CONTROL_PERIOD,
 };
-use tokio::{
-    join, select,
-    time::{interval, sleep, Interval},
-};
+use tokio::{join, select, time::sleep};
 
 pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
     let goal = world.get_ennemy_goal_bounding_box().center();
