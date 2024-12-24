@@ -341,23 +341,6 @@ async fn main() {
         }
     }
 
-    // shoot(&world, &r0, &ball).await;
-
-    // place_ball(&world, &r0, &ball, &goal).await;
-
-    // r0.go_get_ball(&world, &ball).await;
-    // three_attackers_attack(&world, &r1, &r0, &r2).await;
-    // let (d1, d0, d2) = (
-    //     Point2::new(-1., 1.),
-    //     Point2::new(-1., 0.),
-    //     Point2::new(-1., -1.),
-    // );
-    // let _ = join!(
-    //     r1.goto(&world, &d1, Some(0.), AvoidanceMode::AvoidRobots,),
-    //     r0.goto(&world, &d0, Some(0.), AvoidanceMode::AvoidRobots,),
-    //     r2.goto(&world, &d2, Some(0.), AvoidanceMode::AvoidRobots,),
-    // );
-
     sleep(Duration::from_millis(100)).await;
     control_loop_thread_stop_notifier.notify_one(); // ask for stop
     control_loop_thread_handle

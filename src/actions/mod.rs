@@ -142,7 +142,7 @@ pub async fn keep(world: &World, robot: &AllyRobot, ball: &Ball) {
         let _ = robot
             .goto(
                 world,
-                &Point2::new(-4.0, ball.get_pos().y),
+                &|| Point2::new(-4.0, ball.get_pos().y),
                 Some(robot.to(ball).angle()),
                 AvoidanceMode::None,
             )
