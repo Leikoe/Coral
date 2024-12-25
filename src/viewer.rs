@@ -3,6 +3,12 @@ use std::net::{Ipv4Addr, SocketAddrV4};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Utf8Bytes;
 
+use crate::math::Point2;
+
+enum ViewerObject {
+    Robot(Point2),
+}
+
 async fn accept_connection(stream: TcpStream) {
     let addr = stream
         .peer_addr()
@@ -27,7 +33,7 @@ async fn accept_connection(stream: TcpStream) {
 
 pub async fn run_viewer_server_forever(ip: Ipv4Addr, port: u16) {
     let addr = SocketAddrV4::new(ip, port);
-    let (viewer_tx, viewer_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (viewer_tx, viewer_rx) = tokio::sync::mpsc::unbounded_channel::<ViewerObject>();
 
     // Create the event loop and TCP listener we'll accept connections on.
     let try_socket = TcpListener::bind(&addr).await;
