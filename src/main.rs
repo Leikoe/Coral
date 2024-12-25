@@ -6,11 +6,13 @@ use crabe_async::{
     league_protocols::game_controller_packet::referee::Command,
     math::{Point2, Reactive, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
+    viewer::run_viewer_server_forever,
     vision::Vision,
     world::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::{
+    net::Ipv4Addr,
     sync::{Arc, Mutex},
     time::{Duration, Instant, SystemTime},
 };
@@ -307,6 +309,7 @@ async fn main() {
     let world = World::default_with_team_color(color);
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;
+    run_viewer_server_forever(Ipv4Addr::new(127, 0, 0, 1), 8282).await;
     tokio::spawn(update_world_with_vision_forever(world.clone(), real));
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), controller);

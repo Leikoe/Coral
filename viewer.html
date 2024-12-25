@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>SSL Veiwer</title>
+        <script type="text/javascript">
+            function fixCanvasHighPixelDensity(canvas, ctx) {
+                // fix blur on high pixel density screens https://stackoverflow.com/a/59143499
+                const sizeX = 1040;
+                const sizeY = 740;
+                canvas.style.width = sizeX + "px";
+                canvas.style.height = sizeY + "px";
+
+                // Set actual size in memory (scaled to account for extra pixel density).
+                const scale = window.devicePixelRatio; // Change to 1 on retina screens to see blurry canvas.
+                canvas.width = sizeX * scale;
+                canvas.height = sizeY * scale;
+
+                // Normalize coordinate system to use css pixels.
+                ctx.scale(scale, scale);
+            }
+
+            window.onload = function () {
+                const ws = new WebSocket("ws://127.0.0.1:8282");
+                ws.onmessage = (event) => {
+                    console.log(event.data);
+                };
+
+                const c = document.getElementById("field");
+                const ctx = c.getContext("2d");
+                fixCanvasHighPixelDensity(c, ctx);
+                // set pen width
+                ctx.lineWidth = 1;
+
+                // div B field from https://robocup-ssl.github.io/ssl-rules/sslrules.html
+                // background
+                ctx.fillStyle = "green";
+                ctx.fillRect(0, 0, 1040, 740);
+
+                // black square
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "black";
+                ctx.strokeRect(40, 40, 960, 660);
+
+                // white outer rect
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "white";
+                ctx.strokeRect(70, 70, 900, 600);
+
+                // white center circle
+                ctx.beginPath();
+                ctx.ellipse(
+                    1040 / 2,
+                    740 / 2,
+                    50,
+                    50,
+                    Math.PI / 4,
+                    0,
+                    2 * Math.PI,
+                );
+                ctx.stroke();
+
+                // white vertical line
+                ctx.moveTo(1040 / 2, 70);
+                ctx.lineTo(1040 / 2, 670);
+                ctx.stroke();
+                // white horizontal line
+                ctx.moveTo(70, 740 / 2);
+                ctx.lineTo(970, 740 / 2);
+                ctx.stroke();
+
+                // white left defense area
+                ctx.strokeRect(70, 740 / 2 - 100, 100, 200);
+
+                // white right defense area
+                ctx.strokeRect(970 - 100, 740 / 2 - 100, 100, 200);
+
+                // white left goal
+                ctx.strokeRect(70 - 18, 740 / 2 - 50, 18, 100);
+                // white right goal
+                ctx.strokeRect(970, 740 / 2 - 50, 18, 100);
+            };
+        </script>
+    </head>
+    <body>
+        <canvas id="field" width="1040" height="740"> </canvas>
+        <fieldset id="responseMsgSection">
+            <legend>Response</legend>
+            <div id="log"></div>
+        </fieldset>
+    </body>
+</html>
