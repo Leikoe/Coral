@@ -202,7 +202,7 @@ impl<D: RobotData> Robot<D> {
     }
 
     fn collides_with_robot(&self, other_pos: Point2) -> bool {
-        self.distance_to(&other_pos) < 0.4 // a robot is 10cm radius => 0.3 leaves 10cm between robots
+        self.distance_to(&other_pos) < 0.3 // a robot is 10cm radius => 0.3 leaves 10cm between robots
     }
 
     pub fn pov(&self, pos_world: Point2) -> Point2 {

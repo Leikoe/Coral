@@ -212,16 +212,23 @@ async fn play(world: World, mut gc: GameController) {
     // }
 
     loop {
-        interval.tick().await;
+        sleep(Duration::from_secs(1)).await;
         // let _ = r0
         //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
         //     .await;
 
         // keep(&world, &r0, &ball).await;
 
-        do_square_rrt(&world, &r0).await;
+        // let (res1, res2) = join!(do_square_rrt(&world, &r0), async {
+        //     sleep(Duration::from_secs(4)).await;
+        //     do_square_rrt(&world, &r1).await
+        // });
+        // res1.expect("r3 couldn't do the square");
+        // res2.expect("r1 couldn't do the square");
 
-        // backwards_strike(&world, &r0, &ball).await;
+        backwards_strike(&world, &r0, &ball).await;
+
+        // three_attackers_attack(&world, &r1, &r0, &r2).await;
 
         // let _ = r0
         //     .goto(
@@ -261,6 +268,10 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                     }
                     // println!("{:?}", detected_pos);
                     ball.set_pos(detected_pos);
+                    viewer::render(ViewerObject::Point {
+                        color: "orange",
+                        pos: detected_pos,
+                    });
                 }
 
                 let (allies, ennemies) = match world.team_color {

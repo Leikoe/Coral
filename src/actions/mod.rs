@@ -111,6 +111,7 @@ pub async fn place_ball(world: &World, robot: &AllyRobot, ball: &Ball, target_ba
 }
 
 pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoError> {
+    println!("starting square!");
     let poses = vec![
         Point2::new(-1., 1.),
         Point2::new(1., 1.),

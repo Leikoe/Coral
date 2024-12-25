@@ -160,6 +160,13 @@
                 }
             }
 
+            function refresh(ctx, objectsToDraw) {
+                renderField(ctx);
+                for (const o of objectsToDraw) {
+                    render(ctx, o);
+                }
+            }
+
             window.onload = function () {
                 // graphics
                 const c = document.getElementById("field");
@@ -171,10 +178,7 @@
                 const ws = new WebSocket("ws://127.0.0.1:8282");
                 ws.onmessage = (event) => {
                     const cmd = JSON.parse(event.data);
-                    renderField(ctx);
-                    for (const o of cmd.objects) {
-                        render(ctx, o);
-                    }
+                    requestAnimationFrame(() => refresh(ctx, cmd.objects));
                 };
             };
         </script>
