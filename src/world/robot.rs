@@ -187,6 +187,7 @@ impl<D: RobotData> Robot<D> {
         viewer::render(ViewerObject::Robot {
             id: self.get_id(),
             color: self.get_color(),
+            has_ball: self.has_ball(),
             pos: self.get_pos(),
             vel: self.get_vel(),
         });

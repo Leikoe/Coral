@@ -24,6 +24,7 @@ pub enum ViewerObject {
     Robot {
         id: u8,
         color: TeamColor,
+        has_ball: bool,
         pos: Point2,
         vel: Vec2,
     },

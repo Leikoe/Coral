@@ -109,6 +109,9 @@
                         );
                         return;
                 }
+                if (robotRenderCommandData.has_ball) {
+                    color = "purple";
+                }
 
                 const pos_x =
                     robotRenderCommandData.pos.x * 100 + fieldWidth / 2;
