@@ -122,13 +122,22 @@
                 ctx.fillStyle = color;
                 ctx.strokeStyle = color;
 
+                // vel vector
+                ctx.beginPath();
+                canvas_arrow(ctx, pos_x, pos_y, pos_x + vel_x, pos_y + vel_y);
+                ctx.stroke();
+
+                // robot circle
                 ctx.beginPath();
                 ctx.arc(pos_x, pos_y, 9, 0, 2 * Math.PI);
                 ctx.fill();
 
-                ctx.beginPath();
-                canvas_arrow(ctx, pos_x, pos_y, pos_x + vel_x, pos_y + vel_y);
-                ctx.stroke();
+                // robot id
+                const textColor = color == "blue" ? "white" : "black";
+                ctx.fillStyle = textColor;
+                ctx.strokeStyle = textColor;
+                ctx.font = "13px serif";
+                ctx.fillText(robotRenderCommandData.id, pos_x - 3, pos_y + 4); // magic offsets to center the id inside the robot
             }
 
             function renderPoint(ctx, pointRenderCommandData) {
