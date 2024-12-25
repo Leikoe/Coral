@@ -9,6 +9,7 @@ use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
     math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
     trajectories::{bangbang1d::BangBang1d, bangbang2d::BangBang2d, Trajectory},
+    viewer::{self, ViewerObject},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
@@ -17,7 +18,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use super::Ball;
+use super::{Ball, TeamColor};
 
 pub type RobotId = u8;
 const IS_CLOSE_EPSILON: f64 = 0.05;
@@ -42,6 +43,7 @@ pub trait RobotData: Clone + Default {}
 #[derive(Clone)]
 pub struct Robot<D: RobotData> {
     id: RobotId,
+    color: TeamColor,
     pos: Arc<Mutex<Point2>>,
     vel: Arc<Mutex<Vec2>>,
     angular_vel: Arc<Mutex<f64>>,
@@ -76,9 +78,10 @@ impl<D: RobotData> Reactive<Point2> for Robot<D> {
 }
 
 impl<D: RobotData> Robot<D> {
-    pub fn new(id: RobotId, pos: Point2, orientation: f64) -> Self {
+    pub fn new(id: RobotId, color: TeamColor, pos: Point2, orientation: f64) -> Self {
         Self {
             id,
+            color,
             pos: Arc::new(Mutex::new(pos)),
             vel: Arc::new(Mutex::new(Vec2::zero())),
             angular_vel: Arc::new(Mutex::new(0.)),
@@ -89,9 +92,10 @@ impl<D: RobotData> Robot<D> {
         }
     }
 
-    pub fn default_with_id(id: RobotId) -> Self {
+    pub fn default_with_id(id: RobotId, color: TeamColor) -> Self {
         Self {
             id,
+            color,
             pos: Default::default(),
             vel: Default::default(),
             angular_vel: Default::default(),
@@ -104,6 +108,10 @@ impl<D: RobotData> Robot<D> {
 
     pub fn get_id(&self) -> RobotId {
         self.id
+    }
+
+    pub fn get_color(&self) -> TeamColor {
+        self.color
     }
 
     pub fn has_ball(&self) -> bool {
@@ -175,6 +183,13 @@ impl<D: RobotData> Robot<D> {
         self.set_last_update(t_capture);
         self.set_pos(detected_pos);
         self.set_orientation(detectect_orientation);
+
+        viewer::render(ViewerObject::Robot {
+            id: self.get_id(),
+            color: self.get_color(),
+            pos: self.get_pos(),
+            vel: self.get_vel(),
+        });
 
         // let has_ball = {
         //     let r_to_ball = self.to(ball);

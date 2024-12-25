@@ -3,6 +3,9 @@
     <head>
         <title>SSL Veiwer</title>
         <script type="text/javascript">
+            const fieldWidth = 1040;
+            const fieldHeight = 740;
+
             function fixCanvasHighPixelDensity(canvas, ctx) {
                 // fix blur on high pixel density screens https://stackoverflow.com/a/59143499
                 const sizeX = 1040;
@@ -19,22 +22,14 @@
                 ctx.scale(scale, scale);
             }
 
-            window.onload = function () {
-                const ws = new WebSocket("ws://127.0.0.1:8282");
-                ws.onmessage = (event) => {
-                    console.log(event.data);
-                };
-
-                const c = document.getElementById("field");
-                const ctx = c.getContext("2d");
-                fixCanvasHighPixelDensity(c, ctx);
+            function renderField(ctx) {
                 // set pen width
                 ctx.lineWidth = 1;
 
                 // div B field from https://robocup-ssl.github.io/ssl-rules/sslrules.html
                 // background
                 ctx.fillStyle = "green";
-                ctx.fillRect(0, 0, 1040, 740);
+                ctx.fillRect(0, 0, fieldWidth, fieldHeight);
 
                 // black square
                 ctx.lineWidth = 4;
@@ -78,14 +73,74 @@
                 ctx.strokeRect(70 - 18, 740 / 2 - 50, 18, 100);
                 // white right goal
                 ctx.strokeRect(970, 740 / 2 - 50, 18, 100);
+            }
+
+            function renderRobot(ctx, robotRenderCommandData) {
+                let color;
+                switch (robotRenderCommandData.color) {
+                    case "Blue":
+                        color = "blue";
+                        break;
+                    case "Yellow":
+                        color = "yellow";
+                        break;
+                    default:
+                        console.log(
+                            "unknown color",
+                            robotRenderCommandData.color,
+                        );
+                        return;
+                }
+
+                ctx.lineWidth = 1;
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+
+                ctx.beginPath();
+                ctx.arc(
+                    robotRenderCommandData.pos.x * 100 + fieldWidth / 2,
+                    -robotRenderCommandData.pos.y * 100 + fieldHeight / 2,
+                    9,
+                    0,
+                    2 * Math.PI,
+                );
+                ctx.fill();
+            }
+
+            function render(ctx, renderCommandData) {
+                switch (renderCommandData.type) {
+                    case "Robot": {
+                        renderRobot(ctx, renderCommandData);
+                        break;
+                    }
+                }
+            }
+
+            window.onload = function () {
+                // graphics
+                const c = document.getElementById("field");
+                const ctx = c.getContext("2d");
+                fixCanvasHighPixelDensity(c, ctx);
+                renderField(ctx);
+
+                // comm
+                const ws = new WebSocket("ws://127.0.0.1:8282");
+                ws.onmessage = (event) => {
+                    const cmd = JSON.parse(event.data);
+                    renderField(ctx);
+                    for (const o of cmd.objects) {
+                        render(ctx, o);
+                    }
+                };
             };
         </script>
     </head>
     <body>
         <canvas id="field" width="1040" height="740"> </canvas>
-        <fieldset id="responseMsgSection">
-            <legend>Response</legend>
-            <div id="log"></div>
-        </fieldset>
     </body>
+    <style>
+        body {
+            background-color: #0a0a0a;
+        }
+    </style>
 </html>

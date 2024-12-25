@@ -4,6 +4,7 @@ mod robot;
 // EXPORTS
 pub use ball::Ball;
 pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, GotoError, RobotId};
+use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 
 use crate::{
@@ -16,10 +17,19 @@ use std::{
     time::SystemTime,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TeamColor {
     Blue,
     Yellow,
+}
+
+impl TeamColor {
+    pub fn opposite(&self) -> TeamColor {
+        match self {
+            TeamColor::Blue => TeamColor::Yellow,
+            TeamColor::Yellow => TeamColor::Blue,
+        }
+    }
 }
 
 #[derive(Clone)]

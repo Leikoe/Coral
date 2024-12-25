@@ -1,7 +1,8 @@
 use super::{Reactive, Vec2};
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, DivAssign, MulAssign, Sub, SubAssign};
 
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Default)]
 pub struct Point2 {
     pub x: f64,
     pub y: f64,
