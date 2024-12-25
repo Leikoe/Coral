@@ -27,6 +27,10 @@ pub enum ViewerObject {
         pos: Point2,
         vel: Vec2,
     },
+    Point {
+        color: &'static str,
+        pos: Point2,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -430,11 +430,11 @@ impl Robot<AllyData> {
             let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
             let traj = self.make_bangbang2d_to(destination.get_reactive());
-            if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
-                println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
-                self.goto_straight(world, destination, angle).await;
-                break;
-            }
+            // if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
+            //     println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
+            //     self.goto_straight(world, destination, angle).await;
+            //     break;
+            // }
 
             let start_time = Instant::now();
             let path = rrt::dual_rrt_connect(
@@ -474,6 +474,14 @@ impl Robot<AllyData> {
                     }
                     let v = self.pov_vec(traj.get_velocity(0.075));
                     self.set_target_vel(v);
+                    viewer::render(ViewerObject::Point {
+                        color: "grey",
+                        pos: p,
+                    });
+                    viewer::render(ViewerObject::Point {
+                        color: "red",
+                        pos: destination.get_reactive(),
+                    });
 
                     if let Some(angle) = angle {
                         // TODO: find a way to use BangBang1d for orientation

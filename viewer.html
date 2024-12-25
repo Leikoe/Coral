@@ -6,6 +6,24 @@
             const fieldWidth = 1040;
             const fieldHeight = 740;
 
+            function canvas_arrow(context, fromx, fromy, tox, toy) {
+                var headlen = 10; // length of head in pixels
+                var dx = tox - fromx;
+                var dy = toy - fromy;
+                var angle = Math.atan2(dy, dx);
+                context.moveTo(fromx, fromy);
+                context.lineTo(tox, toy);
+                context.lineTo(
+                    tox - headlen * Math.cos(angle - Math.PI / 6),
+                    toy - headlen * Math.sin(angle - Math.PI / 6),
+                );
+                context.moveTo(tox, toy);
+                context.lineTo(
+                    tox - headlen * Math.cos(angle + Math.PI / 6),
+                    toy - headlen * Math.sin(angle + Math.PI / 6),
+                );
+            }
+
             function fixCanvasHighPixelDensity(canvas, ctx) {
                 // fix blur on high pixel density screens https://stackoverflow.com/a/59143499
                 const sizeX = 1040;
@@ -92,18 +110,40 @@
                         return;
                 }
 
+                const pos_x =
+                    robotRenderCommandData.pos.x * 100 + fieldWidth / 2;
+                const pos_y =
+                    -robotRenderCommandData.pos.y * 100 + fieldHeight / 2;
+
+                const vel_x = robotRenderCommandData.vel.x * 100;
+                const vel_y = -robotRenderCommandData.vel.y * 100;
+
                 ctx.lineWidth = 1;
                 ctx.fillStyle = color;
                 ctx.strokeStyle = color;
 
                 ctx.beginPath();
-                ctx.arc(
-                    robotRenderCommandData.pos.x * 100 + fieldWidth / 2,
-                    -robotRenderCommandData.pos.y * 100 + fieldHeight / 2,
-                    9,
-                    0,
-                    2 * Math.PI,
-                );
+                ctx.arc(pos_x, pos_y, 9, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.beginPath();
+                canvas_arrow(ctx, pos_x, pos_y, pos_x + vel_x, pos_y + vel_y);
+                ctx.stroke();
+            }
+
+            function renderPoint(ctx, pointRenderCommandData) {
+                const color = pointRenderCommandData.color;
+                const pos_x =
+                    pointRenderCommandData.pos.x * 100 + fieldWidth / 2;
+                const pos_y =
+                    -pointRenderCommandData.pos.y * 100 + fieldHeight / 2;
+
+                ctx.lineWidth = 1;
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+
+                ctx.beginPath();
+                ctx.arc(pos_x, pos_y, 2.5, 0, 2 * Math.PI);
                 ctx.fill();
             }
 
@@ -111,6 +151,10 @@
                 switch (renderCommandData.type) {
                     case "Robot": {
                         renderRobot(ctx, renderCommandData);
+                        break;
+                    }
+                    case "Point": {
+                        renderPoint(ctx, renderCommandData);
                         break;
                     }
                 }
