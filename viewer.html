@@ -59,14 +59,19 @@
                         }
                         console.log(objectsToDraw.length);
                         objectsToDraw = [];
-                    }
 
-                    // TESTING...Report #seconds since start and achieved fps.
-                    var sinceStart = now - startTime;
-                    var currentFps =
-                        Math.round((1000 / (sinceStart / ++frameCount)) * 100) /
-                        100;
-                    console.log("fps", currentFps);
+                        // TESTING...Report #seconds since start and achieved fps.
+                        var sinceStart = now - startTime;
+                        var currentFps =
+                            Math.round(
+                                (1000 / (sinceStart / ++frameCount)) * 100,
+                            ) / 100;
+                        // display fps
+                        ctx.fillStyle = "white";
+                        ctx.strokeStyle = "white";
+                        ctx.font = "13px serif";
+                        ctx.fillText(`${currentFps} fps`, 10, 20);
+                    }
                 }
             }
 
