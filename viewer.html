@@ -182,7 +182,7 @@
             window.onload = function () {
                 // graphics
                 const c = document.getElementById("field");
-                const ctx = c.getContext("2d");
+                const ctx = c.getContext("2d", { alpha: false });
                 fixCanvasHighPixelDensity(c, ctx);
                 renderField(ctx);
 
