@@ -2,9 +2,73 @@
 <html lang="en">
     <head>
         <title>SSL Veiwer</title>
+    </head>
+    <body>
+        <canvas id="field" width="1040" height="740"> </canvas>
         <script type="text/javascript">
             const fieldWidth = 1040;
             const fieldHeight = 740;
+
+            const c = document.getElementById("field");
+            const ctx = c.getContext("2d", { alpha: false });
+            fixCanvasHighPixelDensity(c, ctx);
+            renderField(ctx);
+            let objectsToDraw = [];
+
+            let stop = false;
+            let frameCount = 0;
+            let fps, fpsInterval, startTime, now, then, elapsed;
+
+            startAnimating(60);
+
+            function startAnimating(fps) {
+                fpsInterval = 1000 / fps;
+                then = window.performance.now();
+                startTime = then;
+                console.log(startTime);
+                animate();
+            }
+
+            function animate(newtime) {
+                // stop
+                if (stop) {
+                    return;
+                }
+
+                // request another frame
+
+                requestAnimationFrame(animate);
+
+                // calc elapsed time since last loop
+
+                now = newtime;
+                elapsed = now - then;
+
+                // if enough time has elapsed, draw the next frame
+
+                if (elapsed > fpsInterval) {
+                    // Get ready for next frame by setting then=now, but...
+                    // Also, adjust for fpsInterval not being multiple of 16.67
+                    then = now - (elapsed % fpsInterval);
+
+                    // draw stuff here
+                    if (objectsToDraw.length != 0) {
+                        renderField(ctx);
+                        for (const o of objectsToDraw) {
+                            render(ctx, o);
+                        }
+                        console.log(objectsToDraw.length);
+                        objectsToDraw = [];
+                    }
+
+                    // TESTING...Report #seconds since start and achieved fps.
+                    var sinceStart = now - startTime;
+                    var currentFps =
+                        Math.round((1000 / (sinceStart / ++frameCount)) * 100) /
+                        100;
+                    console.log("fps", currentFps);
+                }
+            }
 
             function canvas_arrow(context, fromx, fromy, tox, toy) {
                 var headlen = 10; // length of head in pixels
@@ -172,31 +236,17 @@
                 }
             }
 
-            function refresh(ctx, objectsToDraw) {
-                renderField(ctx);
-                for (const o of objectsToDraw) {
-                    render(ctx, o);
-                }
-            }
-
             window.onload = function () {
                 // graphics
-                const c = document.getElementById("field");
-                const ctx = c.getContext("2d", { alpha: false });
-                fixCanvasHighPixelDensity(c, ctx);
-                renderField(ctx);
 
                 // comm
                 const ws = new WebSocket("ws://127.0.0.1:8282");
                 ws.onmessage = (event) => {
                     const cmd = JSON.parse(event.data);
-                    requestAnimationFrame(() => refresh(ctx, cmd.objects));
+                    objectsToDraw.push(...cmd.objects);
                 };
             };
         </script>
-    </head>
-    <body>
-        <canvas id="field" width="1040" height="740"> </canvas>
     </body>
     <style>
         body {
