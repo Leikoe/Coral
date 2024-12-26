@@ -15,6 +15,7 @@
             renderField(ctx);
             let objectsToDraw = [];
 
+            let lastFps;
             let stop = false;
             let frameCount = 0;
             let fps, fpsInterval, startTime, now, then, elapsed;
@@ -61,17 +62,19 @@
                         objectsToDraw = [];
 
                         // TESTING...Report #seconds since start and achieved fps.
-                        var sinceStart = now - startTime;
-                        var currentFps =
-                            Math.round(
-                                (1000 / (sinceStart / ++frameCount)) * 100,
-                            ) / 100;
+
                         // display fps
                         ctx.fillStyle = "white";
                         ctx.strokeStyle = "white";
                         ctx.font = "13px serif";
-                        ctx.fillText(`${currentFps} fps`, 10, 20);
+                        ctx.fillText(`${Math.round(lastFps)} fps`, 10, 20);
                     }
+
+                    let sinceStart = now - startTime;
+                    let currentFps =
+                        Math.round((1000 / (sinceStart / ++frameCount)) * 100) /
+                        100;
+                    lastFps = currentFps;
                 }
             }
 
