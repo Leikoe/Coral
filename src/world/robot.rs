@@ -347,6 +347,11 @@ impl Robot<AllyData> {
         destination: &T,
         angle: Option<f64>,
     ) {
+        let mut destination_point_drawing = viewer::start_drawing(ViewerObject::Point {
+            color: "red",
+            pos: destination.get_reactive(),
+        });
+
         while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
             && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
@@ -354,6 +359,10 @@ impl Robot<AllyData> {
             && self.get_vel().norm() < 0.02)
         {
             world.next_update().await;
+            destination_point_drawing.update(ViewerObject::Point {
+                color: "red",
+                pos: destination.get_reactive(),
+            });
             let traj = self.make_bangbang2d_to(destination.get_reactive());
             let v = self.pov_vec(traj.get_velocity(0.075));
             self.set_target_vel(v);
@@ -431,10 +440,18 @@ impl Robot<AllyData> {
             return Err(GotoError::DestinationOccupiedError);
         }
 
-        'newpath: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
-            || !angle
+        // we stop drawing that point when this guard gets dropped at the end of the scope
+        let _destination_point_drawing = viewer::start_drawing(ViewerObject::Point {
+            color: "red",
+            pos: destination.get_reactive(),
+        });
+
+        // while not arrived
+        'newpath: while !(self.get_pos().distance_to(&destination.get_reactive())
+            < IS_CLOSE_EPSILON
+            && angle
                 .map(|a| self.orientation_diff_to(a).abs() < 0.02)
-                .unwrap_or(true)
+                .unwrap_or(true))
         {
             world.next_update().await;
             println!("[robot{}] trying to go to dest", self.get_id());
@@ -469,30 +486,36 @@ impl Robot<AllyData> {
                 .collect();
             let simplified_path =
                 self.simplify_path(world, avoidance_mode, path_without_current_pos);
+            let simplified_path_len = simplified_path.len();
 
-            for (i, p) in simplified_path.into_iter().enumerate() {
+            let mut next_waypoint_drawing = viewer::start_drawing(ViewerObject::Point {
+                color: "grey",
+                pos: *simplified_path.first().unwrap(),
+            });
+
+            for (i, p) in simplified_path
+                .iter()
+                .enumerate()
+                .take(simplified_path_len - 1)
+            {
                 println!("going to point {}", i);
-                while !(self.get_pos().distance_to(&p) < IS_CLOSE_EPSILON * 3.
+                while !(self.get_pos().distance_to(p) < IS_CLOSE_EPSILON * 3.
                     && angle
                         .map(|a| self.orientation_diff_to(a).abs() < 0.02)
                         .unwrap_or(true))
                 {
                     world.next_update().await;
-                    let traj = self.make_bangbang2d_to(p);
+                    let traj = self.make_bangbang2d_to(*p);
                     if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
                         println!("traj is now invalid, generating a new path!");
                         continue 'newpath;
                     }
                     let v = self.pov_vec(traj.get_velocity(0.075));
                     self.set_target_vel(v);
-                    // viewer::render(ViewerObject::Point {
-                    //     color: "grey",
-                    //     pos: p,
-                    // });
-                    // viewer::render(ViewerObject::Point {
-                    //     color: "red",
-                    //     pos: destination.get_reactive(),
-                    // });
+                    next_waypoint_drawing.update(ViewerObject::Point {
+                        color: "grey",
+                        pos: *p,
+                    });
 
                     if let Some(angle) = angle {
                         // TODO: find a way to use BangBang1d for orientation
@@ -500,6 +523,10 @@ impl Robot<AllyData> {
                         self.set_target_angular_vel(av);
                     }
                 }
+            }
+
+            if let Some(final_p) = simplified_path.last() {
+                self.goto_straight(world, final_p, angle).await;
             }
         }
         println!("arrived!");
