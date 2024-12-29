@@ -63,8 +63,8 @@
                     // display fps
                     ctx.fillStyle = "white";
                     ctx.strokeStyle = "white";
-                    ctx.font = "13px serif";
-                    ctx.fillText(`${Math.round(lastFps)} fps`, 10, 20);
+                    ctx.font = "13px Arial";
+                    ctx.fillText(`${Math.round(lastFps)} FPS`, 10, 20);
 
                     let sinceStart = now - startTime;
                     let currentFps =
@@ -207,8 +207,12 @@
                 const textColor = color == "blue" ? "white" : "black";
                 ctx.fillStyle = textColor;
                 ctx.strokeStyle = textColor;
-                ctx.font = "13px serif";
-                ctx.fillText(robotRenderCommandData.id, pos_x - 3, pos_y + 4); // magic offsets to center the id inside the robot
+                ctx.font = "13px Arial";
+                ctx.fillText(
+                    robotRenderCommandData.id,
+                    pos_x - 3.5,
+                    pos_y + 4.5,
+                ); // magic offsets to center the id inside the robot
             }
 
             function renderPoint(ctx, pointRenderCommandData) {
