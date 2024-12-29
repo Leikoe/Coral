@@ -1,6 +1,6 @@
 use super::{Point2, Vec2};
 
-/// helper function to not have to cast our implementor when it implements multiple Reactive<T>
+/// helper function to not have to cast our implementor when it implements multiple `Reactive<T>`
 pub fn get_reactive<T>(v: &impl Reactive<T>) -> T {
     v.get_reactive()
 }

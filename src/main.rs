@@ -11,11 +11,7 @@ use crabe_async::{
     world::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
-use std::{
-    net::Ipv4Addr,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant, SystemTime},
-};
+use std::time::{Duration, Instant};
 use tokio::{join, select, time::sleep};
 
 #[derive(Debug, Clone, Copy)]

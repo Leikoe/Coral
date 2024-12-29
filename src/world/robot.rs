@@ -21,10 +21,19 @@ use std::{
 use super::{Ball, TeamColor};
 
 pub type RobotId = u8;
+
+/// distance in [m] to consider the robot arrived at a position
 const IS_CLOSE_EPSILON: f64 = 0.05;
+
+/// max number of iterations for RRT
 const RRT_MAX_TRIES: usize = 1_000;
 
-const GOTO_SPEED: f64 = 1.5;
+/// robot's max velocity in [m/s]
+const MAX_VEL: f64 = 5.;
+
+/// robot's max acceleration in [m/s^2]
+const MAX_ACC: f64 = 4.;
+
 const GOTO_ANGULAR_SPEED: f64 = 1.5;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -328,7 +337,7 @@ impl Robot<AllyData> {
     }
 
     fn make_bangbang2d_to(&self, dest: Point2) -> BangBang2d {
-        BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 4., 0.1)
+        BangBang2d::new(self.get_pos(), self.get_vel(), dest, MAX_VEL, MAX_ACC, 0.1)
     }
 
     async fn goto_straight<T: Reactive<Point2>>(
@@ -384,8 +393,8 @@ impl Robot<AllyData> {
                 simplified_path.last().map(|p| *p).unwrap_or(self.get_pos()),
                 Vec2::zero(),
                 p,
-                5.,
-                4.,
+                MAX_VEL,
+                MAX_ACC,
                 0.1,
             );
             let t_is_valid = self.is_a_valid_trajectory(&t, world, avoidance_mode);
