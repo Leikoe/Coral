@@ -9,7 +9,7 @@ use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
     math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
     trajectories::{bangbang1d::BangBang1d, bangbang2d::BangBang2d, Trajectory},
-    viewer::{self, ViewerObject},
+    viewer::{self, ViewerObject, ViewerObjectGuard},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
@@ -59,6 +59,7 @@ pub struct Robot<D: RobotData> {
     orientation: Arc<Mutex<f64>>,
     has_ball: Arc<Mutex<bool>>,
     last_update: Arc<Mutex<Option<f64>>>,
+    drawing: Arc<Mutex<ViewerObjectGuard>>,
     internal_data: D,
 }
 
@@ -97,6 +98,13 @@ impl<D: RobotData> Robot<D> {
             orientation: Default::default(),
             has_ball: Default::default(),
             last_update: Arc::new(Mutex::new(None)),
+            drawing: Arc::new(Mutex::new(viewer::start_drawing(ViewerObject::Robot {
+                id,
+                color,
+                has_ball: false,
+                pos: Default::default(),
+                vel: Default::default(),
+            }))),
             internal_data: Default::default(),
         }
     }
@@ -179,13 +187,10 @@ impl<D: RobotData> Robot<D> {
         self.set_pos(detected_pos);
         self.set_orientation(detectect_orientation);
 
-        // viewer::render(ViewerObject::Robot {
-        //     id: self.get_id(),
-        //     color: self.get_color(),
-        //     has_ball: self.has_ball(),
-        //     pos: self.get_pos(),
-        //     vel: self.get_vel(),
-        // });
+        self.drawing
+            .lock()
+            .unwrap()
+            .update(self.get_viewer_object());
 
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
