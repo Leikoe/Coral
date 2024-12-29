@@ -24,7 +24,7 @@ async fn control_loop<
     E: Debug,
     C: RobotController<HashMap<RobotId, RobotFeedback>, E> + Send + 'static,
 >(
-    mut world: World,
+    world: World,
     controller: &mut C,
 ) {
     let mut interval = tokio::time::interval(CONTROL_PERIOD);

@@ -1,22 +1,17 @@
 use crabe_async::{
-    actions::{backwards_strike, do_square_rrt, keep, place_ball, three_attackers_attack},
+    actions::backwards_strike,
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
     league_protocols::game_controller_packet::referee::Command,
-    math::{Point2, Reactive, Vec2},
-    trajectories::{bangbang2d::BangBang2d, Trajectory},
-    viewer::{self, init, render, ViewerObject},
+    math::Point2,
+    viewer::{self, ViewerObject},
     vision::Vision,
-    world::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId, TeamColor, World},
+    world::{AllyRobot, EnnemyRobot, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
-use std::{
-    net::Ipv4Addr,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant, SystemTime},
-};
-use tokio::{join, select, time::sleep};
+use std::time::{Duration, Instant};
+use tokio::{select, time::sleep};
 
 #[derive(Debug, Clone, Copy)]
 enum HaltedState {
@@ -170,15 +165,15 @@ enum GameEvent {
     RefereeCommand(Command),
 }
 
-async fn play(world: World, mut gc: GameController) {
+async fn play(world: World, gc: GameController) {
     let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();
     let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
     let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
     let ball = world.ball.clone();
 
-    let mut state = GameState::Halted(HaltedState::Halt);
+    let state = GameState::Halted(HaltedState::Halt);
 
-    let mut interval = tokio::time::interval(CONTROL_PERIOD);
+    let interval = tokio::time::interval(CONTROL_PERIOD);
     let start = Instant::now();
 
     // loop {

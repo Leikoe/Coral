@@ -1,8 +1,5 @@
 use crate::math::{Point2, Reactive, Vec2};
-use std::{
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
 pub struct Ball {

@@ -1,21 +1,16 @@
-use plotters::{
-    chart::{ChartBuilder, LabelAreaPosition},
-    prelude::{BitMapBackend, Circle, IntoDrawingArea},
-    style::{BLUE, WHITE},
-};
-use tokio::{select, sync::Notify, time::sleep};
+use tokio::{select, time::sleep};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
     math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
-    trajectories::{bangbang1d::BangBang1d, bangbang2d::BangBang2d, Trajectory},
+    trajectories::{bangbang2d::BangBang2d, Trajectory},
     viewer::{self, ViewerObject},
     world::World,
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::{
     sync::{Arc, Mutex},
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 
 use super::{Ball, TeamColor};
