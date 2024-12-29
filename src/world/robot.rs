@@ -87,20 +87,6 @@ impl<D: RobotData> Reactive<Point2> for Robot<D> {
 }
 
 impl<D: RobotData> Robot<D> {
-    pub fn new(id: RobotId, color: TeamColor, pos: Point2, orientation: f64) -> Self {
-        Self {
-            id,
-            color,
-            pos: Arc::new(Mutex::new(pos)),
-            vel: Arc::new(Mutex::new(Vec2::zero())),
-            angular_vel: Arc::new(Mutex::new(0.)),
-            orientation: Arc::new(Mutex::new(orientation)),
-            has_ball: Arc::new(Mutex::new(false)),
-            last_update: Arc::new(Mutex::new(None)),
-            internal_data: Default::default(),
-        }
-    }
-
     pub fn default_with_id(id: RobotId, color: TeamColor) -> Self {
         Self {
             id,
@@ -236,6 +222,16 @@ impl<D: RobotData> Robot<D> {
 
     pub fn orientation_diff_to(&self, target_orientation: f64) -> f64 {
         angle_difference(target_orientation, self.get_orientation())
+    }
+
+    fn get_viewer_object(&self) -> ViewerObject {
+        ViewerObject::Robot {
+            id: self.get_id(),
+            color: self.get_color(),
+            has_ball: self.has_ball(),
+            pos: self.get_pos(),
+            vel: self.get_vel(),
+        }
     }
 }
 

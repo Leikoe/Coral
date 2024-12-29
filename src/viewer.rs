@@ -68,6 +68,12 @@ pub struct ViewerObjectGuard {
     id: usize,
 }
 
+impl ViewerObjectGuard {
+    pub fn update(&mut self, o: ViewerObject) {
+        DRAWING_POOL.lock().unwrap().insert(self.id, o);
+    }
+}
+
 impl Drop for ViewerObjectGuard {
     fn drop(&mut self) {
         let mut lock = DRAWING_POOL.lock().unwrap();

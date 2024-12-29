@@ -244,6 +244,10 @@ async fn play(world: World, mut gc: GameController) {
 
 async fn update_world_with_vision_forever(mut world: World, real: bool) {
     let mut vision = Vision::new(None, None, real);
+    let mut ball_drawing = viewer::start_drawing(ViewerObject::Point {
+        color: "orange",
+        pos: world.ball.get_pos(),
+    });
     let update_notifier = world.get_update_notifier();
     loop {
         while let Ok(packet) = vision.receive().await {
@@ -264,10 +268,10 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                     }
                     // println!("{:?}", detected_pos);
                     ball.set_pos(detected_pos);
-                    // viewer::render(ViewerObject::Point {
-                    //     color: "orange",
-                    //     pos: detected_pos,
-                    // });
+                    ball_drawing.update(ViewerObject::Point {
+                        color: "orange",
+                        pos: detected_pos,
+                    });
                 }
 
                 let (allies, ennemies) = match world.team_color {
