@@ -184,13 +184,13 @@ impl<D: RobotData> Robot<D> {
         self.set_pos(detected_pos);
         self.set_orientation(detectect_orientation);
 
-        viewer::render(ViewerObject::Robot {
-            id: self.get_id(),
-            color: self.get_color(),
-            has_ball: self.has_ball(),
-            pos: self.get_pos(),
-            vel: self.get_vel(),
-        });
+        // viewer::render(ViewerObject::Robot {
+        //     id: self.get_id(),
+        //     color: self.get_color(),
+        //     has_ball: self.has_ball(),
+        //     pos: self.get_pos(),
+        //     vel: self.get_vel(),
+        // });
 
         // let has_ball = {
         //     let r_to_ball = self.to(ball);
@@ -475,14 +475,14 @@ impl Robot<AllyData> {
                     }
                     let v = self.pov_vec(traj.get_velocity(0.075));
                     self.set_target_vel(v);
-                    viewer::render(ViewerObject::Point {
-                        color: "grey",
-                        pos: p,
-                    });
-                    viewer::render(ViewerObject::Point {
-                        color: "red",
-                        pos: destination.get_reactive(),
-                    });
+                    // viewer::render(ViewerObject::Point {
+                    //     color: "grey",
+                    //     pos: p,
+                    // });
+                    // viewer::render(ViewerObject::Point {
+                    //     color: "red",
+                    //     pos: destination.get_reactive(),
+                    // });
 
                     if let Some(angle) = angle {
                         // TODO: find a way to use BangBang1d for orientation

@@ -6,7 +6,7 @@ use crabe_async::{
     league_protocols::game_controller_packet::referee::Command,
     math::{Point2, Reactive, Vec2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
-    viewer::{self, init, render, ViewerObject},
+    viewer::{self, init, ViewerObject},
     vision::Vision,
     world::{AllyRobot, AvoidanceMode, EnnemyRobot, RobotId, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
@@ -268,10 +268,10 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                     }
                     // println!("{:?}", detected_pos);
                     ball.set_pos(detected_pos);
-                    viewer::render(ViewerObject::Point {
-                        color: "orange",
-                        pos: detected_pos,
-                    });
+                    // viewer::render(ViewerObject::Point {
+                    //     color: "orange",
+                    //     pos: detected_pos,
+                    // });
                 }
 
                 let (allies, ennemies) = match world.team_color {
