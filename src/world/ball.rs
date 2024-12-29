@@ -1,4 +1,7 @@
-use crate::math::{Point2, Reactive, Vec2};
+use crate::{
+    math::{Point2, Vec2},
+    posvelacc::{Acc2, Pos2, Vel2},
+};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
@@ -23,17 +26,13 @@ impl Ball {
         }
     }
 
-    pub fn get_pos(&self) -> Point2 {
-        *self.pos.lock().unwrap()
-    }
-
     pub fn set_pos(&self, pos: Point2) {
         let mut self_pos = self.pos.lock().unwrap();
         *self_pos = pos;
     }
 
-    pub fn get_vel(&self) -> Vec2 {
-        *self.vel.lock().unwrap()
+    pub fn set_vel(&self, vel: Vec2) {
+        *self.vel.lock().unwrap() = vel;
     }
 
     pub fn get_last_update(&self) -> Option<f64> {
@@ -43,15 +42,17 @@ impl Ball {
     pub fn set_last_update(&self, last_update: f64) {
         *self.last_update.lock().unwrap() = Some(last_update);
     }
+}
 
-    pub fn set_vel(&self, vel: Vec2) {
-        *self.vel.lock().unwrap() = vel;
+impl Pos2 for Ball {
+    fn pos(&self) -> Point2 {
+        *self.pos.lock().unwrap()
     }
 }
 
-impl Reactive<Point2> for Ball {
-    fn get_reactive(&self) -> Point2 {
-        self.get_pos()
+impl Vel2 for Ball {
+    fn vel(&self) -> Vec2 {
+        *self.vel.lock().unwrap()
     }
 }
 

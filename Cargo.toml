@@ -10,7 +10,7 @@ tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.31"
 
 # maths
-nalgebra = "0.33.2"
+nalgebra = { version = "0.33.2", features = ["serde-serialize"] }
 
 # path planning
 rrt = "0.7.0"

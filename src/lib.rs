@@ -1,10 +1,13 @@
 #[allow(async_fn_in_trait)]
+extern crate nalgebra as na;
+
 pub mod actions;
 pub mod controllers;
 pub mod game_controller;
 pub mod league_protocols;
 pub mod math;
 pub mod net;
+pub mod posvelacc;
 pub mod trajectories;
 pub mod viewer;
 pub mod vision;

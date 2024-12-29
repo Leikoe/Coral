@@ -2,7 +2,8 @@ use tokio::{select, time::sleep};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
-    math::{angle_difference, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
+    math::{angle_difference, Angle, Point2, Vec2},
+    posvelacc::{Offset2, Pos2},
     trajectories::{bangbang2d::BangBang2d, Trajectory},
     viewer::{self, ViewerObject},
     world::World,
@@ -66,8 +67,8 @@ impl RobotData for EnnemyData {}
 pub type AllyRobot = Robot<AllyData>;
 pub type EnnemyRobot = Robot<EnnemyData>;
 
-impl<D: RobotData> Reactive<Point2> for Robot<D> {
-    fn get_reactive(&self) -> Point2 {
+impl<D: RobotData> Pos2 for Robot<D> {
+    fn pos(&self) -> Point2 {
         *self.pos.lock().unwrap()
     }
 }
@@ -78,7 +79,7 @@ impl<D: RobotData> Robot<D> {
             id,
             color,
             pos: Arc::new(Mutex::new(pos)),
-            vel: Arc::new(Mutex::new(Vec2::zero())),
+            vel: Arc::new(Mutex::new(Vec2::default())),
             angular_vel: Arc::new(Mutex::new(0.)),
             orientation: Arc::new(Mutex::new(orientation)),
             has_ball: Arc::new(Mutex::new(false)),
@@ -202,7 +203,7 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn pov(&self, pos_world: Point2) -> Point2 {
-        let to_pos = self.to(&pos_world).get_reactive();
+        let to_pos = self.to(&pos_world).offset();
         let self_orientation = self.get_orientation();
         let inverse_orientation = -self_orientation;
         Point2::new(
@@ -326,36 +327,41 @@ impl Robot<AllyData> {
         BangBang2d::new(self.get_pos(), self.get_vel(), dest, 5., 4., 0.1)
     }
 
-    async fn goto_straight<T: Reactive<Point2>>(
+    async fn goto_straight<T: Pos2, A: Angle>(
         &self,
         world: &World,
         destination: &T,
-        angle: Option<f64>,
+        angle: Option<&A>,
     ) {
-        while !(self.get_pos().distance_to(&destination.get_reactive()) < IS_CLOSE_EPSILON
+        while !(self.get_pos().distance_to(&destination.pos()) < IS_CLOSE_EPSILON
             && angle
-                .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                .map(|a| self.orientation_diff_to(a._angle()).abs() < 0.02)
                 .unwrap_or(true)
             && self.get_vel().norm() < 0.02)
         {
             world.next_update().await;
-            let traj = self.make_bangbang2d_to(destination.get_reactive());
+            let traj = self.make_bangbang2d_to(destination.pos());
             let v = self.pov_vec(traj.get_velocity(0.075));
             self.set_target_vel(v);
 
             if let Some(angle) = angle {
                 // TODO: find a way to use BangBang1d for orientation
-                let av = self.orientation_diff_to(angle) * GOTO_ANGULAR_SPEED;
+                let av = self.orientation_diff_to(angle._angle()) * GOTO_ANGULAR_SPEED;
                 self.set_target_angular_vel(av);
             }
         }
     }
 
-    async fn look_at<T: Reactive<Point2>>(&self, world: &World, destination: &T) {
-        while !(self.orientation_diff_to(self.to(destination).angle()).abs() < 0.02) {
+    async fn look_at<T: Pos2>(&self, world: &World, destination: &T) {
+        while !(self
+            .orientation_diff_to(self.to(destination).angle()._angle())
+            .abs()
+            < 0.02)
+        {
             // TODO: find a way to handle the angle
             self.set_target_angular_vel(
-                self.orientation_diff_to(self.to(destination).angle()) * GOTO_ANGULAR_SPEED,
+                self.orientation_diff_to(self.to(destination).angle()._angle())
+                    * GOTO_ANGULAR_SPEED,
             );
             world.next_update().await;
         }
@@ -377,7 +383,7 @@ impl Robot<AllyData> {
         {
             let t = BangBang2d::new(
                 simplified_path.last().map(|p| *p).unwrap_or(self.get_pos()),
-                Vec2::zero(),
+                Vec2::default(),
                 p,
                 5.,
                 4.,
@@ -400,11 +406,11 @@ impl Robot<AllyData> {
         simplified_path
     }
 
-    pub async fn goto<T: Reactive<Point2>>(
+    pub async fn goto<T: Pos2, A: Angle>(
         &self,
         world: &World,
         destination: &T,
-        angle: Option<f64>,
+        angle: Option<&A>,
         avoidance_mode: AvoidanceMode,
     ) -> Result<(), GotoError> {
         // if no avoidance_mode: fallback to Robot::goto
@@ -412,20 +418,20 @@ impl Robot<AllyData> {
             return Ok(self.goto_straight(world, destination, angle).await);
         }
 
-        if !self.is_free(self.get_reactive(), world, avoidance_mode) {
+        if !self.is_free(self.pos(), world, avoidance_mode) {
             return Err(GotoError::DestinationOccupiedError);
         }
 
-        'newpath: while self.get_pos().distance_to(&destination.get_reactive()) > IS_CLOSE_EPSILON
+        'newpath: while self.get_pos().distance_to(&destination.pos()) > IS_CLOSE_EPSILON
             || !angle
-                .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                .map(|a| self.orientation_diff_to(a._angle()).abs() < 0.02)
                 .unwrap_or(true)
         {
             world.next_update().await;
             println!("[robot{}] trying to go to dest", self.get_id());
             let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
-            let traj = self.make_bangbang2d_to(destination.get_reactive());
+            let traj = self.make_bangbang2d_to(destination.pos());
             // if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
             //     println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
             //     self.goto_straight(world, destination, angle).await;
@@ -433,10 +439,12 @@ impl Robot<AllyData> {
             // }
 
             let start_time = Instant::now();
+            let start = self.get_pos();
+            let goal = destination.pos();
             let path = rrt::dual_rrt_connect(
-                &self.get_pos().to_vec(),
-                &destination.get_reactive().to_vec(),
-                |p| self.is_free(Point2::from_vec(p), world, avoidance_mode),
+                &vec![start.x, start.y],
+                &vec![goal.x, goal.y],
+                |p| self.is_free(Point2::from_slice(p), world, avoidance_mode),
                 || field.sample_inside().to_vec(),
                 0.1,
                 RRT_MAX_TRIES,
@@ -450,7 +458,7 @@ impl Robot<AllyData> {
             let path_without_current_pos: Vec<Point2> = path
                 .into_iter()
                 .skip(1)
-                .map(|p| Point2::from_vec(&p))
+                .map(|p| Point2::from_slice(&p))
                 .collect();
             let simplified_path =
                 self.simplify_path(world, avoidance_mode, path_without_current_pos);
@@ -459,7 +467,7 @@ impl Robot<AllyData> {
                 println!("going to point {}", i);
                 while !(self.get_pos().distance_to(&p) < IS_CLOSE_EPSILON * 3.
                     && angle
-                        .map(|a| self.orientation_diff_to(a).abs() < 0.02)
+                        .map(|a| self.orientation_diff_to(a._angle()).abs() < 0.02)
                         .unwrap_or(true))
                 {
                     world.next_update().await;
@@ -476,12 +484,12 @@ impl Robot<AllyData> {
                     });
                     viewer::render(ViewerObject::Point {
                         color: "red",
-                        pos: destination.get_reactive(),
+                        pos: destination.pos(),
                     });
 
                     if let Some(angle) = angle {
                         // TODO: find a way to use BangBang1d for orientation
-                        let av = self.orientation_diff_to(angle) * GOTO_ANGULAR_SPEED;
+                        let av = self.orientation_diff_to(angle._angle()) * GOTO_ANGULAR_SPEED;
                         self.set_target_angular_vel(av);
                     }
                 }
@@ -502,14 +510,15 @@ impl Robot<AllyData> {
     pub async fn go_get_ball(&self, world: &World, ball: &Ball) {
         println!("go_get_ball()");
         self.enable_dribbler();
-        let angle = self.to(ball).angle();
+        let to_ball = self.to(ball);
+        let angle = to_ball.angle();
         while !self.has_ball() {
             select! {
                 _ = self
                     .goto(
                         world,
                         ball,
-                        Some(angle),
+                        Some(&angle),
                         AvoidanceMode::None, // TODO: fix this when avoidance works again
                     ) => {}
                 _ = self.wait_until_has_ball() => {
@@ -526,7 +535,7 @@ impl Robot<AllyData> {
             .goto(
                 world,
                 &self.get_pos(),
-                Some(to_receiver.angle()),
+                Some(&to_receiver.angle()),
                 AvoidanceMode::AvoidRobots,
             )
             .await;

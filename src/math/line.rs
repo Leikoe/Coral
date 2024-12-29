@@ -23,7 +23,7 @@ impl Line {
             // The line segment has zero length, return the start point.
             return self.start;
         }
-        let t = point_direction.dot(line_direction) / line_length_squared;
+        let t = point_direction.dot(&line_direction) / line_length_squared;
 
         // The point is closest to a point on the segment.
         self.start + line_direction * t

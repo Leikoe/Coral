@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use crate::{
-    math::{Line, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
+    math::{Line, Point2, Vec2},
+    posvelacc::{Offset2, Pos2},
     world::{AllyRobot, AvoidanceMode, Ball, GotoError, World},
 };
 use tokio::{join, select, time::sleep};
@@ -9,7 +10,7 @@ use tokio::{join, select, time::sleep};
 pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
     let goal = world.get_ennemy_goal_bounding_box().center();
     let ball_to_goal = ball.to(&goal);
-    let ball_to_behind_ball = ball_to_goal.normalized().mul(-0.3);
+    let ball_to_behind_ball = ball_to_goal.normalized().scale(-0.3);
 
     let behind_ball = ball.plus(ball_to_behind_ball);
     let _ = robot
@@ -170,7 +171,7 @@ pub async fn three_attackers_attack(
         left_winger.goto(
             world,
             &p1,
-            Some(p1.to(p2).angle()),
+            Some(p1.to(&p2).angle()),
             AvoidanceMode::AvoidRobots,
         ),
         fronter.goto(
@@ -182,7 +183,7 @@ pub async fn three_attackers_attack(
         right_winger.goto(
             world,
             &p3,
-            Some(p3.to(p2).angle()),
+            Some(p3.to(&p2).angle()),
             AvoidanceMode::AvoidRobots,
         ),
     );
