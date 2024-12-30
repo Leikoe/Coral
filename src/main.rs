@@ -220,7 +220,7 @@ async fn play(world: World, _gc: GameController) {
 
         // keep(&world, &r0, &ball).await;
 
-        let (res1, res2) = join!(
+        let (res1, _res2) = join!(
             do_square_rrt(&world, &r0),
             backwards_strike(&world, &r1, &ball)
         );
