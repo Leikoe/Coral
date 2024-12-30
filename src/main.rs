@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::do_square_rrt,
+    actions::{backwards_strike, do_square_rrt},
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
@@ -10,7 +10,7 @@ use crabe_async::{
     IgnoreMutexErr, DETECTION_SCALING_FACTOR,
 };
 use std::time::Duration;
-use tokio::{select, time::sleep};
+use tokio::{join, select, time::sleep};
 
 // #[derive(Debug, Clone, Copy)]
 // enum HaltedState {
@@ -206,9 +206,13 @@ async fn play(world: World, _gc: GameController) {
         } else {
             continue;
         };
-        // let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
+        let r1 = if let Some(r1) = world.team.lock().unwrap().get(&4).cloned() {
+            r1
+        } else {
+            continue;
+        };
         // let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
-        let _ball = world.ball.clone();
+        let ball = world.ball.clone();
 
         // let _ = r0
         //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
@@ -216,16 +220,16 @@ async fn play(world: World, _gc: GameController) {
 
         // keep(&world, &r0, &ball).await;
 
-        // let (res1, res2) = join!(do_square_rrt(&world, &r0), async {
-        //     sleep(Duration::from_secs(4)).await;
-        //     do_square_rrt(&world, &r1).await
-        // });
-        // res1.expect("r3 couldn't do the square");
+        let (res1, res2) = join!(
+            do_square_rrt(&world, &r0),
+            backwards_strike(&world, &r1, &ball)
+        );
+        res1.expect("r3 couldn't do the square");
         // res2.expect("r1 couldn't do the square");
 
-        if let Err(e) = do_square_rrt(&world, &r0).await {
-            println!("{:?}", e);
-        }
+        // if let Err(e) = do_square_rrt(&world, &r0).await {
+        //     println!("{:?}", e);
+        // }
 
         // backwards_strike(&world, &r0, &ball).await;
 
