@@ -46,21 +46,18 @@ pub struct ViewerFrame {
     objects: Vec<ViewerObject>,
 }
 
-static DRAWING_POOL: LazyLock<Mutex<HashMap<usize, ViewerObject>>> =
+static DRAWINGS_POOL: LazyLock<Mutex<HashMap<usize, ViewerObject>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-pub fn to_be_drawn_objects() -> usize {
-    DRAWING_POOL.lock().unwrap().len()
+/// Returns the number of `ViewerObject`s which should currently be drawn (the size of the internal drawings pool).
+pub fn to_be_drawn_objects_count() -> usize {
+    DRAWINGS_POOL.lock().unwrap().len()
 }
 
-fn get_frame() -> ViewerFrame {
+/// Returns a new `ViewerFrame` containing the `ViewerObject`s which should currently be drawn.
+fn make_frame() -> ViewerFrame {
     ViewerFrame {
-        objects: DRAWING_POOL
-            .lock()
-            .unwrap()
-            .values()
-            .map(Clone::clone)
-            .collect(),
+        objects: DRAWINGS_POOL.lock().unwrap().values().cloned().collect(),
     }
 }
 
@@ -70,17 +67,21 @@ pub struct ViewerObjectGuard {
 
 impl ViewerObjectGuard {
     pub fn update(&mut self, o: ViewerObject) {
-        DRAWING_POOL.lock().unwrap().insert(self.id, o);
+        DRAWINGS_POOL.lock().unwrap().insert(self.id, o);
     }
 }
 
 impl Drop for ViewerObjectGuard {
     fn drop(&mut self) {
-        let mut lock = DRAWING_POOL.lock().unwrap();
+        let mut lock = DRAWINGS_POOL.lock().unwrap();
         lock.remove(&self.id);
     }
 }
 
+/// Makes the viewer start drawing the given `ViewerObject`.
+/// Returns the `ViewerObjectGuard` associated with the object to be drawn.
+/// The `ViewerObject` will be drawn each frame until the guard is dropped.
+///
 /// # Examples
 ///
 /// Register the drawing by using `start_drawing()`
@@ -111,7 +112,7 @@ impl Drop for ViewerObjectGuard {
 /// ```
 pub fn start_drawing(o: ViewerObject) -> ViewerObjectGuard {
     let uuid: usize = rand::random(); // TODO: replace this by a atomic usize
-    let mut lock = DRAWING_POOL.lock().unwrap();
+    let mut lock = DRAWINGS_POOL.lock().unwrap();
     lock.insert(uuid, o);
     ViewerObjectGuard { id: uuid }
 }
@@ -155,7 +156,7 @@ async fn accept_connection(new_frame_notifier: Arc<Notify>, stream: TcpStream) {
 
     while !ws_stream.is_terminated() {
         new_frame_notifier.notified().await;
-        let frame = get_frame();
+        let frame = make_frame();
         let json_encoded_cmd = serde_json::to_string(&frame).unwrap();
         ws_stream
             .send(tokio_tungstenite::tungstenite::Message::text(
