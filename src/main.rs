@@ -166,11 +166,6 @@ enum GameEvent {
 }
 
 async fn play(world: World, gc: GameController) {
-    let r0 = world.team.lock().unwrap().get(&3).unwrap().clone();
-    let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
-    let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
-    let ball = world.ball.clone();
-
     // let state = GameState::Halted(HaltedState::Halt);
 
     // let interval = tokio::time::interval(CONTROL_PERIOD);
@@ -207,7 +202,15 @@ async fn play(world: World, gc: GameController) {
     // }
 
     loop {
-        sleep(Duration::from_secs(1)).await;
+        let r0 = if let Some(r0) = world.team.lock().unwrap().get(&3).map(|r| r.clone()) {
+            r0
+        } else {
+            continue;
+        };
+        // let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
+        // let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
+        let ball = world.ball.clone();
+
         // let _ = r0
         //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
         //     .await;
@@ -238,6 +241,7 @@ async fn play(world: World, gc: GameController) {
         //         AvoidanceMode::None,
         //     )
         //     .await;
+        sleep(Duration::from_secs(1)).await;
     }
 }
 
@@ -287,7 +291,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                     // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
                     let r = ally_team
                         .get_mut(&rid)
-                        .expect("couldn't find a robot which SHOULD have been in our team");
+                        .expect("pre inserted robot MUST be present");
                     r.update_from_packet(ally_detection, &ball, detection_time);
                 }
 
@@ -299,7 +303,9 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                         ennemy_team.insert(rid, r);
                     }
                     // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                    let r = ennemy_team.get_mut(&rid).unwrap();
+                    let r = ennemy_team
+                        .get_mut(&rid)
+                        .expect("pre inserted robot MUST be present");
                     r.update_from_packet(ennemy_detection, &ball, detection_time);
                 }
                 update_notifier.notify_waiters();
