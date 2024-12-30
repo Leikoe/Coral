@@ -7,9 +7,9 @@ use crabe_async::{
     viewer::{self, ViewerObject},
     vision::Vision,
     world::{AllyRobot, EnnemyRobot, TeamColor, World},
-    IgnoreMutexErr, CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
+    IgnoreMutexErr, DETECTION_SCALING_FACTOR,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::{select, time::sleep};
 
 // #[derive(Debug, Clone, Copy)]

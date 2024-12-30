@@ -7,7 +7,7 @@ use crate::{
 };
 use tokio::{join, select, time::sleep};
 
-pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
+pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) -> Result<(), GotoError> {
     let goal = world.get_ennemy_goal_bounding_box().center();
     let ball_to_goal = ball.to(&goal);
     let ball_to_behind_ball = ball_to_goal.normalized().mul(-0.3);
@@ -20,17 +20,18 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
             Some(ball_to_goal.angle()),
             AvoidanceMode::AvoidRobotsAndBall,
         )
-        .await
-        .expect("couldn't goto the ball, maybe we were against the ball ?");
+        .await?;
     robot.enable_dribbler();
     select! {
-        _ = robot
+        g = robot
             .goto(
                 world,
                 ball,
                 Some(ball_to_goal.angle()),
                 AvoidanceMode::AvoidRobots,
-            ) => {}
+            ) => {
+                g?;
+            }
         _ = robot.wait_until_has_ball() => {}
     };
     robot.disable_dribbler();
@@ -39,6 +40,8 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
         interval.tick().await;
         robot.kick();
     }
+
+    Ok(())
 }
 
 pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
