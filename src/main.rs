@@ -7,7 +7,7 @@ use crabe_async::{
     viewer::{self, ViewerObject},
     vision::Vision,
     world::{AllyRobot, EnnemyRobot, TeamColor, World},
-    IgnoreMutexErr, DETECTION_SCALING_FACTOR,
+    DETECTION_SCALING_FACTOR,
 };
 use std::time::Duration;
 use tokio::{join, select, time::sleep};
@@ -338,13 +338,7 @@ async fn main() {
     tokio::spawn(update_world_with_vision_forever(world.clone(), real));
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
         launch_control_thread(world.clone(), controller);
-    // AWAIT ROBOTS DETECTION
-    {
-        while world.team.lock().unwrap_ignore_poison().is_empty() {
-            println!("[WARNING] not detecting any ally robots yet, waiting 1s.");
-            sleep(Duration::from_secs(1)).await;
-        }
-    }
+    world.allies_detection().await; // AWAIT ROBOTS DETECTION
 
     select! {
         _ = play(world, gc) => {}

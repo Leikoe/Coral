@@ -5,7 +5,7 @@ mod robot;
 pub use ball::Ball;
 pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, GotoError, RobotId};
 use serde::{Deserialize, Serialize};
-use tokio::sync::Notify;
+use tokio::{sync::Notify, time::sleep};
 
 use crate::{
     league_protocols::vision_packet::SslGeometryFieldSize,
@@ -15,7 +15,7 @@ use crate::{
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,6 +73,13 @@ impl World {
         match self.team_color {
             TeamColor::Blue => self.field.get_yellow_goal_bounding_box(),
             TeamColor::Yellow => self.field.get_blue_goal_bounding_box(),
+        }
+    }
+
+    pub async fn allies_detection(&self) {
+        while self.team.lock().unwrap_ignore_poison().is_empty() {
+            println!("[WARNING] not detecting any ally robots yet, waiting 1s.");
+            sleep(Duration::from_secs(1)).await;
         }
     }
 }
