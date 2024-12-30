@@ -9,6 +9,7 @@ use crate::{
     IgnoreMutexErr, CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::{
+    collections::VecDeque,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -517,6 +518,22 @@ impl Robot<AllyData> {
                     .expect("couldn't get first point of the path returned by rrt & simplified by Robot::simplify_path()"),
             });
 
+            let mut _ps = vec![self.get_pos()];
+            for p in &simplified_path[..simplified_path_len - 1] {
+                _ps.push(*p);
+            }
+            let mut path_drawing: VecDeque<ViewerObjectGuard> = _ps
+                .into_iter()
+                .zip(simplified_path.iter().copied())
+                .map(|(start, end)| {
+                    viewer::start_drawing(ViewerObject::Segment {
+                        color: "red",
+                        start,
+                        end,
+                    })
+                })
+                .collect();
+
             for (i, p) in simplified_path
                 .iter()
                 .enumerate()
@@ -540,6 +557,11 @@ impl Robot<AllyData> {
                         color: "grey",
                         pos: *p,
                     });
+                    path_drawing[0].update(ViewerObject::Segment {
+                        color: "blue",
+                        start: self.get_pos(), // update the current segment of the path to start at robot pos
+                        end: *p,
+                    });
 
                     if let Some(angle) = angle {
                         // TODO: find a way to use BangBang1d for orientation
@@ -547,6 +569,7 @@ impl Robot<AllyData> {
                         self.set_target_angular_vel(av);
                     }
                 }
+                path_drawing.pop_front(); // when done with a point, we drop it to stop drawing it
             }
 
             if let Some(final_p) = simplified_path.last() {

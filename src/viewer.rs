@@ -69,6 +69,11 @@ pub enum ViewerObject {
         color: &'static str,
         pos: Point2,
     },
+    Segment {
+        color: &'static str,
+        start: Point2,
+        end: Point2,
+    },
 }
 
 /// A frame sent to each viewer client. It contains all the objects to be drawn during the frame.

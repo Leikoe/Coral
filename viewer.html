@@ -124,6 +124,7 @@
 
                 // white outer rect
                 ctx.lineWidth = 1;
+                ctx.fillStyle = "white";
                 ctx.strokeStyle = "white";
                 ctx.strokeRect(70, 70, 900, 600);
 
@@ -231,6 +232,27 @@
                 ctx.fill();
             }
 
+            function renderSegment(ctx, segmentRenderCommandData) {
+                const color = segmentRenderCommandData.color;
+                const start_x =
+                    segmentRenderCommandData.start.x * 100 + fieldWidth / 2;
+                const start_y =
+                    -segmentRenderCommandData.start.y * 100 + fieldHeight / 2;
+                const end_x =
+                    segmentRenderCommandData.end.x * 100 + fieldWidth / 2;
+                const end_y =
+                    -segmentRenderCommandData.end.y * 100 + fieldHeight / 2;
+
+                ctx.lineWidth = 1;
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+
+                // white horizontal line
+                ctx.moveTo(start_x, start_y);
+                ctx.lineTo(end_x, end_y);
+                ctx.stroke();
+            }
+
             function render(ctx, renderCommandData) {
                 switch (renderCommandData.type) {
                     case "Robot": {
@@ -239,6 +261,10 @@
                     }
                     case "Point": {
                         renderPoint(ctx, renderCommandData);
+                        break;
+                    }
+                    case "Segment": {
+                        renderSegment(ctx, renderCommandData);
                         break;
                     }
                 }

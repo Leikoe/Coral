@@ -1,5 +1,5 @@
 use crabe_async::{
-    actions::backwards_strike,
+    actions::do_square_rrt,
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
@@ -208,7 +208,7 @@ async fn play(world: World, _gc: GameController) {
         };
         // let r1 = world.team.lock().unwrap().get(&4).unwrap().clone();
         // let r2 = world.team.lock().unwrap().get(&5).unwrap().clone();
-        let ball = world.ball.clone();
+        let _ball = world.ball.clone();
 
         // let _ = r0
         //     .goto(&world, &Point2::zero(), None, AvoidanceMode::None)
@@ -223,7 +223,11 @@ async fn play(world: World, _gc: GameController) {
         // res1.expect("r3 couldn't do the square");
         // res2.expect("r1 couldn't do the square");
 
-        backwards_strike(&world, &r0, &ball).await;
+        if let Err(e) = do_square_rrt(&world, &r0).await {
+            println!("{:?}", e);
+        }
+
+        // backwards_strike(&world, &r0, &ball).await;
 
         // three_attackers_attack(&world, &r1, &r0, &r2).await;
 
