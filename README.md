@@ -11,3 +11,5 @@ Run grSim with default ip & ports.
 ```shell
 cargo run # --release
 ```
+
+To run the viewer, open `viewer.html` with your favorite browser !
