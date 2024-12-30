@@ -45,6 +45,7 @@ use tokio::{
 use crate::{
     math::{Point2, Vec2},
     world::TeamColor,
+    IgnoreMutexErr,
 };
 
 /// default viewer ip
@@ -81,13 +82,18 @@ static DRAWINGS_POOL: LazyLock<Mutex<HashMap<usize, ViewerObject>>> =
 
 /// Returns the number of `ViewerObject`s which should currently be drawn (the size of the internal drawings pool).
 pub fn to_be_drawn_objects_count() -> usize {
-    DRAWINGS_POOL.lock().unwrap().len()
+    DRAWINGS_POOL.lock().unwrap_ignore_poison().len()
 }
 
 /// Returns a new `ViewerFrame` containing the `ViewerObject`s which should currently be drawn.
 fn make_frame() -> ViewerFrame {
     ViewerFrame {
-        objects: DRAWINGS_POOL.lock().unwrap().values().cloned().collect(),
+        objects: DRAWINGS_POOL
+            .lock()
+            .unwrap_ignore_poison()
+            .values()
+            .cloned()
+            .collect(),
     }
 }
 
@@ -99,13 +105,16 @@ pub struct ViewerObjectGuard {
 
 impl ViewerObjectGuard {
     pub fn update(&mut self, o: ViewerObject) {
-        DRAWINGS_POOL.lock().unwrap().insert(self.id, o);
+        DRAWINGS_POOL
+            .lock()
+            .unwrap_ignore_poison()
+            .insert(self.id, o);
     }
 }
 
 impl Drop for ViewerObjectGuard {
     fn drop(&mut self) {
-        let mut lock = DRAWINGS_POOL.lock().unwrap();
+        let mut lock = DRAWINGS_POOL.lock().unwrap_ignore_poison();
         lock.remove(&self.id);
     }
 }
@@ -144,7 +153,7 @@ impl Drop for ViewerObjectGuard {
 /// ```
 pub fn start_drawing(o: ViewerObject) -> ViewerObjectGuard {
     let uuid: usize = rand::random(); // TODO: replace this by a atomic usize
-    let mut lock = DRAWINGS_POOL.lock().unwrap();
+    let mut lock = DRAWINGS_POOL.lock().unwrap_ignore_poison();
     lock.insert(uuid, o);
     ViewerObjectGuard { id: uuid }
 }
@@ -190,7 +199,8 @@ async fn accept_connection(new_frame_notifier: Arc<Notify>, stream: TcpStream) {
     while !ws_stream.is_terminated() {
         new_frame_notifier.notified().await;
         let frame = make_frame();
-        let json_encoded_cmd = serde_json::to_string(&frame).unwrap();
+        let json_encoded_cmd =
+            serde_json::to_string(&frame).expect("couldn't serialize `ViewerFrame`");
         ws_stream
             .send(tokio_tungstenite::tungstenite::Message::text(
                 json_encoded_cmd,

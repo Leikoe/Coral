@@ -6,7 +6,7 @@ use crate::{
     trajectories::{bangbang2d::BangBang2d, Trajectory},
     viewer::{self, ViewerObject, ViewerObjectGuard},
     world::World,
-    CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
+    IgnoreMutexErr, CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
 use std::{
     sync::{Arc, Mutex},
@@ -78,7 +78,7 @@ pub type EnnemyRobot = Robot<EnnemyData>;
 
 impl<D: RobotData> Reactive<Point2> for Robot<D> {
     fn get_reactive(&self) -> Point2 {
-        *self.pos.lock().unwrap()
+        *self.pos.lock().unwrap_ignore_poison()
     }
 }
 
@@ -113,51 +113,51 @@ impl<D: RobotData> Robot<D> {
     }
 
     pub fn has_ball(&self) -> bool {
-        *self.has_ball.lock().unwrap()
+        *self.has_ball.lock().unwrap_ignore_poison()
     }
 
     pub fn set_has_ball(&mut self, has_ball: bool) {
-        *self.has_ball.lock().unwrap() = has_ball;
+        *self.has_ball.lock().unwrap_ignore_poison() = has_ball;
     }
 
     pub fn get_orientation(&self) -> f64 {
-        *self.orientation.lock().unwrap()
+        *self.orientation.lock().unwrap_ignore_poison()
     }
 
     pub fn get_pos(&self) -> Point2 {
-        *self.pos.lock().unwrap()
+        *self.pos.lock().unwrap_ignore_poison()
     }
 
     pub fn set_pos(&mut self, pos: Point2) {
-        *self.pos.lock().unwrap() = pos;
+        *self.pos.lock().unwrap_ignore_poison() = pos;
     }
 
     pub fn get_vel(&self) -> Vec2 {
-        *self.vel.lock().unwrap()
+        *self.vel.lock().unwrap_ignore_poison()
     }
 
     pub fn set_vel(&mut self, vel: Vec2) {
-        *self.vel.lock().unwrap() = vel;
+        *self.vel.lock().unwrap_ignore_poison() = vel;
     }
 
     pub fn get_angular_vel(&self) -> f64 {
-        *self.angular_vel.lock().unwrap()
+        *self.angular_vel.lock().unwrap_ignore_poison()
     }
 
     pub fn set_angular_vel(&mut self, vel: f64) {
-        *self.angular_vel.lock().unwrap() = vel;
+        *self.angular_vel.lock().unwrap_ignore_poison() = vel;
     }
 
     pub fn set_orientation(&mut self, orientation: f64) {
-        *self.orientation.lock().unwrap() = orientation;
+        *self.orientation.lock().unwrap_ignore_poison() = orientation;
     }
 
     pub fn get_last_update(&self) -> Option<f64> {
-        *self.last_update.lock().unwrap()
+        *self.last_update.lock().unwrap_ignore_poison()
     }
 
     pub fn set_last_update(&mut self, last_update: f64) {
-        *self.last_update.lock().unwrap() = Some(last_update);
+        *self.last_update.lock().unwrap_ignore_poison() = Some(last_update);
     }
 
     pub fn update_from_packet(
@@ -184,7 +184,7 @@ impl<D: RobotData> Robot<D> {
 
         self.drawing
             .lock()
-            .unwrap()
+            .unwrap_ignore_poison()
             .update(self.get_viewer_object());
 
         // let has_ball = {
@@ -243,46 +243,66 @@ pub enum GotoError {
 
 impl Robot<AllyData> {
     pub fn kick(&self) {
-        let mut should_kick = self.internal_data.should_kick.lock().unwrap();
+        let mut should_kick = self.internal_data.should_kick.lock().unwrap_ignore_poison();
         *should_kick = true;
     }
 
     // return the should_kick state & resets it back to false (similar to Option::take)
     pub fn take_should_kick(&self) -> bool {
-        let mut should_kick = self.internal_data.should_kick.lock().unwrap();
+        let mut should_kick = self.internal_data.should_kick.lock().unwrap_ignore_poison();
         let ret = *should_kick;
         *should_kick = false;
         ret
     }
 
     pub fn enable_dribbler(&self) {
-        let mut is_dribbling = self.internal_data.should_dribble.lock().unwrap();
+        let mut is_dribbling = self
+            .internal_data
+            .should_dribble
+            .lock()
+            .unwrap_ignore_poison();
         *is_dribbling = true;
     }
 
     pub fn disable_dribbler(&self) {
-        let mut is_dribbling = self.internal_data.should_dribble.lock().unwrap();
+        let mut is_dribbling = self
+            .internal_data
+            .should_dribble
+            .lock()
+            .unwrap_ignore_poison();
         *is_dribbling = false;
     }
 
     pub fn should_dribble(&self) -> bool {
-        *self.internal_data.should_dribble.lock().unwrap()
+        *self
+            .internal_data
+            .should_dribble
+            .lock()
+            .unwrap_ignore_poison()
     }
 
     pub fn get_target_vel(&self) -> Vec2 {
-        *self.internal_data.target_vel.lock().unwrap()
+        *self.internal_data.target_vel.lock().unwrap_ignore_poison()
     }
 
     pub fn set_target_vel(&self, target_vel: Vec2) {
-        *self.internal_data.target_vel.lock().unwrap() = target_vel;
+        *self.internal_data.target_vel.lock().unwrap_ignore_poison() = target_vel;
     }
 
     pub fn get_target_angular_vel(&self) -> f64 {
-        *self.internal_data.target_angular_vel.lock().unwrap()
+        *self
+            .internal_data
+            .target_angular_vel
+            .lock()
+            .unwrap_ignore_poison()
     }
 
     pub fn set_target_angular_vel(&self, target_angular_vel: f64) {
-        *self.internal_data.target_angular_vel.lock().unwrap() = target_angular_vel;
+        *self
+            .internal_data
+            .target_angular_vel
+            .lock()
+            .unwrap_ignore_poison() = target_angular_vel;
     }
 
     fn is_free(&self, pos: Point2, world: &World, avoidance_mode: AvoidanceMode) -> bool {
@@ -293,14 +313,14 @@ impl Robot<AllyData> {
         let is_colliding_with_allies = world
             .team
             .lock()
-            .unwrap()
+            .unwrap_ignore_poison()
             .values()
             .filter(|r| r.get_id() != self.get_id()) // can't collide with myself
             .any(|r| r.collides_with_robot(pos));
         let is_colliding_with_ennemies = world
             .ennemies
             .lock()
-            .unwrap()
+            .unwrap_ignore_poison()
             .values()
             .any(|r| r.collides_with_robot(pos));
 
@@ -457,7 +477,9 @@ impl Robot<AllyData> {
             println!("[robot{}] trying to go to dest", self.get_id());
             let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
+            // TODO: fix later
             // let traj = self.make_bangbang2d_to(destination.get_reactive());
+
             // if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
             //     println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
             //     self.goto_straight(world, destination, angle).await;
@@ -490,7 +512,9 @@ impl Robot<AllyData> {
 
             let mut next_waypoint_drawing = viewer::start_drawing(ViewerObject::Point {
                 color: "grey",
-                pos: *simplified_path.first().unwrap(),
+                pos: *simplified_path
+                    .first()
+                    .expect("couldn't get first point of the path returned by rrt & simplified by Robot::simplify_path()"),
             });
 
             for (i, p) in simplified_path

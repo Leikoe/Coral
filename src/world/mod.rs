@@ -10,6 +10,7 @@ use tokio::sync::Notify;
 use crate::{
     league_protocols::vision_packet::SslGeometryFieldSize,
     math::{Point2, Rect},
+    IgnoreMutexErr,
 };
 use std::{
     collections::HashMap,
@@ -102,24 +103,24 @@ impl Default for Field {
 
 impl Field {
     pub fn update_from_packet(&mut self, packet: SslGeometryFieldSize) {
-        *self.field_length.lock().unwrap() = packet.field_length as f64 / 1000.;
-        *self.field_width.lock().unwrap() = packet.field_width as f64 / 1000.;
+        *self.field_length.lock().unwrap_ignore_poison() = packet.field_length as f64 / 1000.;
+        *self.field_width.lock().unwrap_ignore_poison() = packet.field_width as f64 / 1000.;
     }
 
     pub fn get_field_length(&self) -> f64 {
-        *self.field_length.lock().unwrap()
+        *self.field_length.lock().unwrap_ignore_poison()
     }
 
     pub fn get_field_width(&self) -> f64 {
-        *self.field_width.lock().unwrap()
+        *self.field_width.lock().unwrap_ignore_poison()
     }
 
     pub fn get_goal_depth(&self) -> f64 {
-        *self.goal_depth.lock().unwrap()
+        *self.goal_depth.lock().unwrap_ignore_poison()
     }
 
     pub fn get_goal_width(&self) -> f64 {
-        *self.goal_width.lock().unwrap()
+        *self.goal_width.lock().unwrap_ignore_poison()
     }
 
     pub fn get_bounding_box(&self) -> Rect {

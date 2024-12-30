@@ -1,5 +1,5 @@
-#[allow(async_fn_in_trait)]
-#[deny(clippy::unwrap_used)]
+#![deny(clippy::unwrap_used)]
+#![allow(async_fn_in_trait)]
 pub mod actions;
 pub mod controllers;
 pub mod game_controller;
@@ -60,7 +60,7 @@ async fn control_loop<
         let robots = world
             .team
             .lock()
-            .unwrap()
+            .unwrap_ignore_poison()
             .values()
             .cloned()
             .collect::<Vec<AllyRobot>>();
@@ -69,7 +69,7 @@ async fn control_loop<
             .await
             .expect("couldn't send commands to robots");
         for (rid, feedback) in feedback_per_robot {
-            if let Some(robot) = world.team.lock().unwrap().get_mut(&rid) {
+            if let Some(robot) = world.team.lock().unwrap_ignore_poison().get_mut(&rid) {
                 robot.set_has_ball(feedback.dribbler_ball_contact());
             }
         }

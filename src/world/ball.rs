@@ -1,4 +1,7 @@
-use crate::math::{Point2, Reactive, Vec2};
+use crate::{
+    math::{Point2, Reactive, Vec2},
+    IgnoreMutexErr,
+};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
@@ -24,28 +27,28 @@ impl Ball {
     }
 
     pub fn get_pos(&self) -> Point2 {
-        *self.pos.lock().unwrap()
+        *self.pos.lock().unwrap_ignore_poison()
     }
 
     pub fn set_pos(&self, pos: Point2) {
-        let mut self_pos = self.pos.lock().unwrap();
+        let mut self_pos = self.pos.lock().unwrap_ignore_poison();
         *self_pos = pos;
     }
 
     pub fn get_vel(&self) -> Vec2 {
-        *self.vel.lock().unwrap()
+        *self.vel.lock().unwrap_ignore_poison()
     }
 
     pub fn get_last_update(&self) -> Option<f64> {
-        *self.last_update.lock().unwrap()
+        *self.last_update.lock().unwrap_ignore_poison()
     }
 
     pub fn set_last_update(&self, last_update: f64) {
-        *self.last_update.lock().unwrap() = Some(last_update);
+        *self.last_update.lock().unwrap_ignore_poison() = Some(last_update);
     }
 
     pub fn set_vel(&self, vel: Vec2) {
-        *self.vel.lock().unwrap() = vel;
+        *self.vel.lock().unwrap_ignore_poison() = vel;
     }
 }
 
