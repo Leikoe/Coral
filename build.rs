@@ -1,4 +1,3 @@
-use prost_build;
 use std::path::{Path, PathBuf};
 
 fn compile_packet(filename: &str, protos: &[impl AsRef<Path>], includes: &[impl AsRef<Path>]) {

@@ -163,7 +163,7 @@ impl<D: RobotData> Robot<D> {
     pub fn update_from_packet(
         &mut self,
         detection: SslDetectionRobot,
-        ball: &Ball,
+        _ball: &Ball,
         t_capture: f64,
     ) {
         let detected_pos = Point2::new(
@@ -310,7 +310,7 @@ impl Robot<AllyData> {
         }
 
         let is_colliding_with_ball = pos.distance_to(&world.ball) < 0.2;
-        return !is_colliding_with_a_robot && !is_colliding_with_ball;
+        !is_colliding_with_a_robot && !is_colliding_with_ball
     }
 
     pub fn is_a_valid_trajectory(
@@ -370,15 +370,19 @@ impl Robot<AllyData> {
         }
     }
 
-    async fn look_at<T: Reactive<Point2>>(&self, world: &World, destination: &T) {
-        while !(self.orientation_diff_to(self.to(destination).angle()).abs() < 0.02) {
-            // TODO: find a way to handle the angle
-            self.set_target_angular_vel(
-                self.orientation_diff_to(self.to(destination).angle()) * GOTO_ANGULAR_SPEED,
-            );
-            world.next_update().await;
-        }
-    }
+    // async fn look_at<T: Reactive<Point2>>(&self, world: &World, destination: &T) {
+    //     while let Some(Ordering::Greater) = self
+    //         .orientation_diff_to(self.to(destination).angle())
+    //         .abs()
+    //         .partial_cmp(&0.02)
+    //     {
+    //         // TODO: find a way to handle the angle
+    //         self.set_target_angular_vel(
+    //             self.orientation_diff_to(self.to(destination).angle()) * GOTO_ANGULAR_SPEED,
+    //         );
+    //         world.next_update().await;
+    //     }
+    // }
 
     fn simplify_path(
         &self,
@@ -395,7 +399,7 @@ impl Robot<AllyData> {
             .map(|(i, p)| (i, p, i == path_len - 1))
         {
             let t = BangBang2d::new(
-                simplified_path.last().map(|p| *p).unwrap_or(self.get_pos()),
+                simplified_path.last().copied().unwrap_or(self.get_pos()),
                 Vec2::zero(),
                 p,
                 MAX_VEL,
@@ -428,7 +432,8 @@ impl Robot<AllyData> {
     ) -> Result<(), GotoError> {
         // if no avoidance_mode: fallback to Robot::goto
         if let AvoidanceMode::None = avoidance_mode {
-            return Ok(self.goto_straight(world, destination, angle).await);
+            self.goto_straight(world, destination, angle).await;
+            return Ok(());
         }
 
         if !self.is_free(self.get_reactive(), world, avoidance_mode) {
@@ -452,7 +457,7 @@ impl Robot<AllyData> {
             println!("[robot{}] trying to go to dest", self.get_id());
             let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
-            let traj = self.make_bangbang2d_to(destination.get_reactive());
+            // let traj = self.make_bangbang2d_to(destination.get_reactive());
             // if self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
             //     println!("[robot{}] TRAJ WAS VALID, GOING FASSSTTTTT!", self.get_id());
             //     self.goto_straight(world, destination, angle).await;

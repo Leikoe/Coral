@@ -38,7 +38,7 @@ async fn control_loop<
             .lock()
             .unwrap()
             .values()
-            .map(|r| r.clone())
+            .cloned()
             .collect::<Vec<AllyRobot>>();
         let feedback_per_robot = controller
             .send_proper_command_for(robots.into_iter())

@@ -9,13 +9,13 @@ pub trait Reactive<T> {
     fn get_reactive(&self) -> T;
 }
 
-impl<'a, T: Fn() -> Vec2> Reactive<Vec2> for T {
+impl<T: Fn() -> Vec2> Reactive<Vec2> for T {
     fn get_reactive(&self) -> Vec2 {
         self()
     }
 }
 
-impl<'a, T: Fn() -> Point2> Reactive<Point2> for T {
+impl<T: Fn() -> Point2> Reactive<Point2> for T {
     fn get_reactive(&self) -> Point2 {
         self()
     }
@@ -74,9 +74,7 @@ impl<'base, B: Reactive<Point2>, T: Reactive<Vec2>> ReactivePoint<'base, B, T> {
     }
 }
 
-impl<'base, B: Reactive<Point2>, T: Reactive<Vec2>> Reactive<Point2>
-    for ReactivePoint<'base, B, T>
-{
+impl<B: Reactive<Point2>, T: Reactive<Vec2>> Reactive<Point2> for ReactivePoint<'_, B, T> {
     fn get_reactive(&self) -> Point2 {
         self.base.get_reactive() + self.transform.get_reactive()
     }

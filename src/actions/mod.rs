@@ -1,3 +1,4 @@
+use core::f64;
 use std::time::Duration;
 
 use crate::{
@@ -12,7 +13,7 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
     let ball_to_behind_ball = ball_to_goal.normalized().mul(-0.3);
 
     let behind_ball = ball.plus(ball_to_behind_ball);
-    let _ = robot
+    robot
         .goto(
             world,
             &behind_ball,
@@ -47,7 +48,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
         .goto(
             world,
             &Point2::new(3., 1.),
-            Some(1.5708),
+            Some(f64::consts::FRAC_PI_2),
             AvoidanceMode::None,
         )
         .await;
@@ -128,28 +129,28 @@ pub async fn do_square_rrt(world: &World, robot: &AllyRobot) -> Result<(), GotoE
     Ok(())
 }
 
-pub async fn keep(world: &World, robot: &AllyRobot, ball: &Ball) {
-    let top_goal = Point2::new(-world.field.get_field_length() / 2., 0.5);
-    let bottom_goal = Point2::new(-world.field.get_field_length() / 2., -0.5);
-    let goal_line = Line::new(top_goal, bottom_goal);
+// pub async fn keep(world: &World, robot: &AllyRobot, ball: &Ball) {
+//     let top_goal = Point2::new(-world.field.get_field_length() / 2., 0.5);
+//     let bottom_goal = Point2::new(-world.field.get_field_length() / 2., -0.5);
+//     let goal_line = Line::new(top_goal, bottom_goal);
 
-    loop {
-        let _ = robot
-            .goto(
-                world,
-                &|| Point2::new(-4.0, ball.get_pos().y),
-                Some(robot.to(ball).angle()),
-                AvoidanceMode::None,
-            )
-            .await;
+//     loop {
+//         let _ = robot
+//             .goto(
+//                 world,
+//                 &|| Point2::new(-4.0, ball.get_pos().y),
+//                 Some(robot.to(ball).angle()),
+//                 AvoidanceMode::None,
+//             )
+//             .await;
 
-        // let ball_to_horizon = ball.get_vel() * 1000.;
-        // let ray = Line::new(ball.get_pos(), ball.get_pos() + ball_to_horizon);
+//         // let ball_to_horizon = ball.get_vel() * 1000.;
+//         // let ray = Line::new(ball.get_pos(), ball.get_pos() + ball_to_horizon);
 
-        // if
-        // robot.goto(world, , angle, avoidance_mode)
-    }
-}
+//         // if
+//         // robot.goto(world, , angle, avoidance_mode)
+//     }
+// }
 
 // TODO: require the fronter to have the ball
 pub async fn three_attackers_attack(

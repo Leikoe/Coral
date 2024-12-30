@@ -102,11 +102,11 @@ impl BangBang1d {
                 return i;
             }
         }
-        return self.n_parts - 1;
+        self.n_parts - 1
     }
 
     fn find_part(&self, t: f64) -> BangBangPart {
-        return self.bangbang_parts[self.find_part_idx(t)];
+        self.bangbang_parts[self.find_part_idx(t)]
     }
 }
 

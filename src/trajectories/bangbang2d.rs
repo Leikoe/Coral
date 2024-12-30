@@ -21,12 +21,12 @@ impl BangBang2d {
         max_accel: f64,
         accuracy: f64,
     ) -> Self {
-        let initial_posx = initial_pos.x as f64;
-        let initial_posy = initial_pos.y as f64;
-        let target_posx = target_pos.x as f64;
-        let target_posy = target_pos.y as f64;
-        let initial_velx = initial_vel.x as f64;
-        let initial_vely = initial_vel.y as f64;
+        let initial_posx = initial_pos.x;
+        let initial_posy = initial_pos.y;
+        let target_posx = target_pos.x;
+        let target_posy = target_pos.y;
+        let initial_velx = initial_vel.x;
+        let initial_vely = initial_vel.y;
 
         let mut inc = PI / 8.0;
         let mut alpha = PI / 4.0;

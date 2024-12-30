@@ -1,3 +1,4 @@
+#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
 pub mod game_controller_packet;
 pub mod robot_packet;
 pub mod simulation_packet;

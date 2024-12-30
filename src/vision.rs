@@ -1,12 +1,10 @@
 use crate::league_protocols::vision_packet::SslWrapperPacket;
 use crate::net::multicast_receiver::MulticastUdpReceiver;
 use std::net::Ipv4Addr;
-use std::time::Duration;
 
 const DEFAULT_VISION_IP: Ipv4Addr = Ipv4Addr::new(224, 5, 23, 2);
 const DEFAULT_VISION_PORT_REAL: u16 = 10006;
 const DEFAULT_VISION_PORT_SIM: u16 = 10020;
-const RECEIVE_TIMEOUT: Duration = Duration::from_millis(10);
 
 // TODO: Document
 pub struct Vision {

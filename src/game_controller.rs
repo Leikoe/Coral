@@ -2,11 +2,9 @@ use crate::league_protocols::game_controller_packet::Referee;
 use crate::net::multicast_receiver::MulticastUdpReceiver;
 use crate::net::ReceiveError;
 use std::net::Ipv4Addr;
-use std::time::Duration;
 
 const DEFAULT_GC_IP: Ipv4Addr = Ipv4Addr::new(224, 5, 23, 1);
 const DEFAUL_TGC_PORT: u16 = 10003;
-const RECEIVE_TIMEOUT: Duration = Duration::from_millis(10);
 
 pub struct GameController {
     socket: MulticastUdpReceiver,

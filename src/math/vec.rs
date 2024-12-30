@@ -25,12 +25,12 @@ impl Vec2 {
     }
 
     pub fn normalized(&self) -> Self {
-        self.clone() / self.norm()
+        *self / self.norm()
     }
 
     /// get the angle in degrees of the
     pub fn angle(&self) -> f64 {
-        self.y.atan2(self.x) as f64
+        self.y.atan2(self.x)
     }
 
     pub fn dot(&self, rhs: Self) -> f64 {

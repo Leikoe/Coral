@@ -3,169 +3,168 @@ use crabe_async::{
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
     launch_control_thread,
-    league_protocols::game_controller_packet::referee::Command,
     math::Point2,
     viewer::{self, ViewerObject},
     vision::Vision,
     world::{AllyRobot, EnnemyRobot, TeamColor, World},
     CONTROL_PERIOD, DETECTION_SCALING_FACTOR,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::{select, time::sleep};
 
-#[derive(Debug, Clone, Copy)]
-enum HaltedState {
-    Halt,
-    Timeout,
-}
+// #[derive(Debug, Clone, Copy)]
+// enum HaltedState {
+//     Halt,
+//     Timeout,
+// }
 
-#[derive(Debug, Clone, Copy)]
-enum StoppedState {
-    Stop,
-    PrepareKickoff,
-    BallPlacementUs,
-    BallPlacementThem,
-    PreparePenalty,
-}
+// #[derive(Debug, Clone, Copy)]
+// enum StoppedState {
+//     Stop,
+//     PrepareKickoff,
+//     BallPlacementUs,
+//     BallPlacementThem,
+//     PreparePenalty,
+// }
 
-#[derive(Debug, Clone, Copy)]
-enum RunningState {
-    Kickoff,
-    FreeKickUs,
-    FreeKickThem,
-    Penalty,
-    Run,
-}
+// #[derive(Debug, Clone, Copy)]
+// enum RunningState {
+//     Kickoff,
+//     FreeKickUs,
+//     FreeKickThem,
+//     Penalty,
+//     Run,
+// }
 
-#[derive(Debug, Clone, Copy)]
-enum GameState {
-    Halted(HaltedState),
-    Stopped(StoppedState),
-    Running(RunningState),
-}
+// #[derive(Debug, Clone, Copy)]
+// enum GameState {
+//     Halted(HaltedState),
+//     Stopped(StoppedState),
+//     Running(RunningState),
+// }
 
-impl GameState {
-    pub fn update(self, event: GameEvent, color: TeamColor) -> Self {
-        match (self, event, color) {
-            // (from any state) Halt -> Halt
-            (_, GameEvent::RefereeCommand(Command::Halt), _) => {
-                GameState::Halted(HaltedState::Halt)
-            }
-            // Halted
-            (
-                GameState::Halted(HaltedState::Halt | HaltedState::Timeout),
-                GameEvent::RefereeCommand(Command::Stop),
-                _,
-            ) => GameState::Stopped(StoppedState::Stop),
-            // (
-            //     GameState::Stopped(StoppedState::Stop),
-            //     GameEvent::RefereeCommand(Command::Timeout),
-            // ) => GameState::Halted(HaltedState::Timeout),
-            // Stopped
-            // (
-            //     GameState::Stopped(StoppedState::Stop),
-            //     GameEvent::RefereeCommand(Command::PrepareKickoff),
-            // ) => GameState::Stopped(StoppedState::PrepareKickoff),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::BallPlacementBlue),
-                TeamColor::Blue,
-            ) => GameState::Stopped(StoppedState::BallPlacementUs),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::BallPlacementBlue),
-                TeamColor::Yellow,
-            ) => GameState::Stopped(StoppedState::BallPlacementThem),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::BallPlacementYellow),
-                TeamColor::Blue,
-            ) => GameState::Stopped(StoppedState::BallPlacementThem),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::BallPlacementYellow),
-                TeamColor::Yellow,
-            ) => GameState::Stopped(StoppedState::BallPlacementUs),
-            // (
-            //     GameState::Stopped(StoppedState::Stop),
-            //     GameEvent::RefereeCommand(Command::PreparePenalty),
-            // ) => GameState::Stopped(StoppedState::PreparePenalty),
-            // FREE KICKS
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::DirectFreeBlue),
-                TeamColor::Blue,
-            ) => GameState::Running(RunningState::FreeKickUs),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::DirectFreeYellow),
-                TeamColor::Blue,
-            ) => GameState::Running(RunningState::FreeKickThem),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::DirectFreeBlue),
-                TeamColor::Yellow,
-            ) => GameState::Running(RunningState::FreeKickThem),
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::DirectFreeYellow),
-                TeamColor::Yellow,
-            ) => GameState::Running(RunningState::FreeKickUs),
+// impl GameState {
+//     pub fn update(self, event: GameEvent, color: TeamColor) -> Self {
+//         match (self, event, color) {
+//             // (from any state) Halt -> Halt
+//             (_, GameEvent::RefereeCommand(Command::Halt), _) => {
+//                 GameState::Halted(HaltedState::Halt)
+//             }
+//             // Halted
+//             (
+//                 GameState::Halted(HaltedState::Halt | HaltedState::Timeout),
+//                 GameEvent::RefereeCommand(Command::Stop),
+//                 _,
+//             ) => GameState::Stopped(StoppedState::Stop),
+//             // (
+//             //     GameState::Stopped(StoppedState::Stop),
+//             //     GameEvent::RefereeCommand(Command::Timeout),
+//             // ) => GameState::Halted(HaltedState::Timeout),
+//             // Stopped
+//             // (
+//             //     GameState::Stopped(StoppedState::Stop),
+//             //     GameEvent::RefereeCommand(Command::PrepareKickoff),
+//             // ) => GameState::Stopped(StoppedState::PrepareKickoff),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::BallPlacementBlue),
+//                 TeamColor::Blue,
+//             ) => GameState::Stopped(StoppedState::BallPlacementUs),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::BallPlacementBlue),
+//                 TeamColor::Yellow,
+//             ) => GameState::Stopped(StoppedState::BallPlacementThem),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::BallPlacementYellow),
+//                 TeamColor::Blue,
+//             ) => GameState::Stopped(StoppedState::BallPlacementThem),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::BallPlacementYellow),
+//                 TeamColor::Yellow,
+//             ) => GameState::Stopped(StoppedState::BallPlacementUs),
+//             // (
+//             //     GameState::Stopped(StoppedState::Stop),
+//             //     GameEvent::RefereeCommand(Command::PreparePenalty),
+//             // ) => GameState::Stopped(StoppedState::PreparePenalty),
+//             // FREE KICKS
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::DirectFreeBlue),
+//                 TeamColor::Blue,
+//             ) => GameState::Running(RunningState::FreeKickUs),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::DirectFreeYellow),
+//                 TeamColor::Blue,
+//             ) => GameState::Running(RunningState::FreeKickThem),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::DirectFreeBlue),
+//                 TeamColor::Yellow,
+//             ) => GameState::Running(RunningState::FreeKickThem),
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::DirectFreeYellow),
+//                 TeamColor::Yellow,
+//             ) => GameState::Running(RunningState::FreeKickUs),
 
-            (
-                GameState::Stopped(StoppedState::Stop),
-                GameEvent::RefereeCommand(Command::ForceStart),
-                _,
-            ) => GameState::Running(RunningState::Run),
-            (
-                GameState::Stopped(StoppedState::PrepareKickoff),
-                GameEvent::RefereeCommand(Command::NormalStart),
-                _,
-            ) => GameState::Running(RunningState::Kickoff),
-            (
-                GameState::Stopped(StoppedState::BallPlacementUs | StoppedState::BallPlacementThem),
-                GameEvent::RefereeCommand(Command::Stop),
-                _,
-            ) => GameState::Stopped(StoppedState::Stop),
-            // (
-            //     GameState::Stopped(StoppedState::BallPlacement),
-            //     GameEvent::RefereeCommand(Command::Continue),
-            // ) => GameState::Running(RunningState::FreeKick),
-            (
-                GameState::Stopped(StoppedState::PreparePenalty),
-                GameEvent::RefereeCommand(Command::NormalStart),
-                _,
-            ) => GameState::Running(RunningState::Penalty),
-            // Running
-            // TODO: fix the AfterXSeconds(_)
-            // (
-            //     GameState::Running(RunningState::Kickoff),
-            //     GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
-            // ) => GameState::Running(RunningState::Run),
-            // (
-            //     GameState::Running(RunningState::FreeKick),
-            //     GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
-            // ) => GameState::Running(RunningState::Run),
-            // (GameState::Running(RunningState::Run), GameEvent::Stop) => {
-            //     GameState::Stopped(StoppedState::Stop)
-            // }
-            (s, e, _) => {
-                println!(
-                    "[WARNING] unexpected game state and event combination ({:?}, {:?})",
-                    s, e
-                );
-                s
-            }
-        }
-    }
-}
+//             (
+//                 GameState::Stopped(StoppedState::Stop),
+//                 GameEvent::RefereeCommand(Command::ForceStart),
+//                 _,
+//             ) => GameState::Running(RunningState::Run),
+//             (
+//                 GameState::Stopped(StoppedState::PrepareKickoff),
+//                 GameEvent::RefereeCommand(Command::NormalStart),
+//                 _,
+//             ) => GameState::Running(RunningState::Kickoff),
+//             (
+//                 GameState::Stopped(StoppedState::BallPlacementUs | StoppedState::BallPlacementThem),
+//                 GameEvent::RefereeCommand(Command::Stop),
+//                 _,
+//             ) => GameState::Stopped(StoppedState::Stop),
+//             // (
+//             //     GameState::Stopped(StoppedState::BallPlacement),
+//             //     GameEvent::RefereeCommand(Command::Continue),
+//             // ) => GameState::Running(RunningState::FreeKick),
+//             (
+//                 GameState::Stopped(StoppedState::PreparePenalty),
+//                 GameEvent::RefereeCommand(Command::NormalStart),
+//                 _,
+//             ) => GameState::Running(RunningState::Penalty),
+//             // Running
+//             // TODO: fix the AfterXSeconds(_)
+//             // (
+//             //     GameState::Running(RunningState::Kickoff),
+//             //     GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
+//             // ) => GameState::Running(RunningState::Run),
+//             // (
+//             //     GameState::Running(RunningState::FreeKick),
+//             //     GameEvent::AfterXSeconds(_) | GameEvent::BallMoved,
+//             // ) => GameState::Running(RunningState::Run),
+//             // (GameState::Running(RunningState::Run), GameEvent::Stop) => {
+//             //     GameState::Stopped(StoppedState::Stop)
+//             // }
+//             (s, e, _) => {
+//                 println!(
+//                     "[WARNING] unexpected game state and event combination ({:?}, {:?})",
+//                     s, e
+//                 );
+//                 s
+//             }
+//         }
+//     }
+// }
 
-#[derive(Debug, Clone, Copy)]
-enum GameEvent {
-    RefereeCommand(Command),
-}
+// #[derive(Debug, Clone, Copy)]
+// enum GameEvent {
+//     RefereeCommand(Command),
+// }
 
-async fn play(world: World, gc: GameController) {
+async fn play(world: World, _gc: GameController) {
     // let state = GameState::Halted(HaltedState::Halt);
 
     // let interval = tokio::time::interval(CONTROL_PERIOD);
@@ -202,7 +201,7 @@ async fn play(world: World, gc: GameController) {
     // }
 
     loop {
-        let r0 = if let Some(r0) = world.team.lock().unwrap().get(&3).map(|r| r.clone()) {
+        let r0 = if let Some(r0) = world.team.lock().unwrap().get(&3).cloned() {
             r0
         } else {
             continue;
@@ -260,7 +259,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
             if let Some(detection) = packet.detection {
                 // println!("NEW CAM PACKET!");
                 let detection_time = detection.t_capture;
-                if let Some(ball_detection) = detection.balls.get(0) {
+                if let Some(ball_detection) = detection.balls.first() {
                     let detected_pos = Point2::new(
                         ball_detection.x as f64 / DETECTION_SCALING_FACTOR,
                         ball_detection.y as f64 / DETECTION_SCALING_FACTOR,
