@@ -86,10 +86,10 @@ impl Drop for ViewerObjectGuard {
 ///
 /// Register the drawing by using `start_drawing()`
 /// ```
-/// use crabe_async::{math::Point2, viewer::{ViewerObject, start_drawing, to_be_drawn_objects}};
+/// use crabe_async::{math::Point2, viewer::{ViewerObject, start_drawing, to_be_drawn_objects_count}};
 ///
 /// # assert_eq!(
-/// #     to_be_drawn_objects(),
+/// #     to_be_drawn_objects_count(),
 /// #     0,
 /// #     "the drawing pool should be empty at init"
 /// # );
@@ -99,13 +99,13 @@ impl Drop for ViewerObjectGuard {
 ///     pos: Point2::zero(),
 /// });
 /// assert_eq!(
-///     to_be_drawn_objects(),
+///     to_be_drawn_objects_count(),
 ///     1,
 ///     "the drawing pool should now have the point"
 /// );
 /// drop(drawing_guard);
 /// assert_eq!(
-///     to_be_drawn_objects(),
+///     to_be_drawn_objects_count(),
 ///     0,
 ///     "the drawing pool should be empty after point guard was dropped"
 /// );
