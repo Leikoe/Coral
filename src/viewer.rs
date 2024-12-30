@@ -1,3 +1,34 @@
+//! Viewer abstraction.
+//!
+//! Provides an abstraction over a viewer client.  The api is guard based to be easily used in asynchronous code.
+//!
+//! # Examples
+//!
+//! If you want to draw a point to a target during a strategy:
+//! ```
+//! use crabe_async::{
+//!     math::Point2,
+//!     viewer::{ViewerObject, start_drawing, to_be_drawn_objects_count}
+//! };
+//! use tokio::time::{sleep, Duration};
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     let target_point = Point2::new(3., 0.);
+//!     let target_point_drawing_guard = start_drawing(ViewerObject::Point {
+//!         color: "red",
+//!         pos: target_point,
+//!     });
+//!
+//!     // This sleep will act as a 1s strategy.
+//!     // During the sleep, the point will be drawn on each frame
+//!     sleep(Duration::from_secs(1)).await;
+//!
+//!     // here the `target_point_drawing_guard` goes out of scope and gets dropped.
+//!     // The point stops being drawn.
+//! }
+//! ```
+
 use futures_util::{stream::FusedStream, SinkExt};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -16,9 +47,13 @@ use crate::{
     world::TeamColor,
 };
 
+/// default viewer ip
 const VIEWER_IP: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+
+/// default viewer port
 const VIEWER_PORT: u16 = 8282;
 
+/// A shape that can be drawn on the viewer clients
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ViewerObject {
@@ -35,12 +70,7 @@ pub enum ViewerObject {
     },
 }
 
-#[derive(Debug, Clone)]
-pub enum ViewerCommand {
-    Rerender,
-    Render(ViewerObject),
-}
-
+/// A frame sent to each viewer client. It contains all the objects to be drawn during the frame.
 #[derive(Serialize, Debug, Clone)]
 pub struct ViewerFrame {
     objects: Vec<ViewerObject>,
@@ -61,6 +91,8 @@ fn make_frame() -> ViewerFrame {
     }
 }
 
+/// A guard for a `ViewerObject` while it's being actively drawn.
+/// When dropped, the ascociated `ViewerObject` stops being drawn.
 pub struct ViewerObjectGuard {
     id: usize,
 }
@@ -117,6 +149,7 @@ pub fn start_drawing(o: ViewerObject) -> ViewerObjectGuard {
     ViewerObjectGuard { id: uuid }
 }
 
+/// Starts the viewer server and the new frame thread.
 pub async fn init() {
     let addr = SocketAddrV4::new(VIEWER_IP, VIEWER_PORT);
     let new_frame_notify = Arc::new(Notify::new());
