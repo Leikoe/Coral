@@ -21,7 +21,7 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) {
             AvoidanceMode::AvoidRobotsAndBall,
         )
         .await
-        .unwrap(); // will fail if we are against the ball
+        .expect("couldn't goto the ball, maybe we were against the ball ?");
     robot.enable_dribbler();
     select! {
         _ = robot

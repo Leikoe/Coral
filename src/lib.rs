@@ -1,4 +1,5 @@
 #[allow(async_fn_in_trait)]
+#[deny(clippy::unwrap_used)]
 pub mod actions;
 pub mod controllers;
 pub mod game_controller;
@@ -11,7 +12,12 @@ pub mod viewer;
 pub mod vision;
 pub mod world;
 
-use std::{collections::HashMap, fmt::Debug, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    sync::{Arc, LockResult},
+    time::Duration,
+};
 
 use controllers::RobotController;
 use league_protocols::simulation_packet::RobotFeedback;
@@ -20,6 +26,24 @@ use world::{AllyRobot, RobotId, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
 pub const DETECTION_SCALING_FACTOR: f64 = 1000.;
+
+pub trait IgnoreMutexErr<T> {
+    fn unwrap_ignore_poison(self) -> T;
+}
+
+impl<T> IgnoreMutexErr<T> for LockResult<T> {
+    fn unwrap_ignore_poison(self) -> T {
+        match self {
+            Ok(r) => r,
+            Err(poisoned) => {
+                // Handle mutex poisoning
+                let guard = poisoned.into_inner();
+                println!("[WARNING] mutex was poisoned, recovering from mutex poisoning");
+                guard
+            }
+        }
+    }
+}
 
 async fn control_loop<
     E: Debug,
