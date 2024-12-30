@@ -6,7 +6,7 @@ default-run = "crabe_async"
 
 [dependencies]
 # async executor / runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "signal"] }
 futures-util = "0.3.31"
 
 # path planning
