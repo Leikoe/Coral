@@ -1,6 +1,5 @@
 use crabe_async::{
     controllers::{sim_controller::SimRobotController, RobotController},
-    math::Point2,
     world::{AllyRobot, TeamColor},
 };
 

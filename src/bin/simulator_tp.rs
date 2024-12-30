@@ -1,7 +1,7 @@
 use crabe_async::{
     math::Point2,
     simulation_control::SimulationController,
-    world::{AllyRobot, TeamColor},
+    world::TeamColor,
 };
 
 #[tokio::main]

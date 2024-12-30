@@ -1,6 +1,6 @@
 // Tiger's BangBang2d implementation in rust
 
-use std::{cmp::Ordering, f64::consts::PI, time::Instant};
+use std::{cmp::Ordering, f64::consts::PI};
 
 use crate::math::{Point2, Vec2};
 
