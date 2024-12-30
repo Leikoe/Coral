@@ -534,16 +534,19 @@ impl Robot<AllyData> {
                 })
                 .collect();
 
-            for (i, p) in simplified_path
-                .iter()
-                .enumerate()
-                .take(simplified_path_len - 1)
-            {
+            for (i, p) in simplified_path.iter().enumerate() {
                 println!("going to point {}", i);
-                while !(self.get_pos().distance_to(p) < IS_CLOSE_EPSILON * 3.
+                let is_last = i == simplified_path_len - 1;
+                let done_dst = if is_last {
+                    IS_CLOSE_EPSILON
+                } else {
+                    IS_CLOSE_EPSILON * 3.
+                };
+                while !(self.get_pos().distance_to(p) < done_dst
                     && angle
                         .map(|a| self.orientation_diff_to(a).abs() < 0.02)
-                        .unwrap_or(true))
+                        .unwrap_or(true)
+                    && (!is_last || self.get_vel().norm() < 0.02))
                 {
                     world.next_update().await;
                     let traj = self.make_bangbang2d_to(*p);
@@ -558,7 +561,7 @@ impl Robot<AllyData> {
                         pos: *p,
                     });
                     path_drawing[0].update(ViewerObject::Segment {
-                        color: "blue",
+                        color: "red",
                         start: self.get_pos(), // update the current segment of the path to start at robot pos
                         end: *p,
                     });
@@ -570,10 +573,6 @@ impl Robot<AllyData> {
                     }
                 }
                 path_drawing.pop_front(); // when done with a point, we drop it to stop drawing it
-            }
-
-            if let Some(final_p) = simplified_path.last() {
-                self.goto_straight(world, final_p, angle).await;
             }
         }
         println!("arrived!");
