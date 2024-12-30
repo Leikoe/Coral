@@ -511,13 +511,6 @@ impl Robot<AllyData> {
                 self.simplify_path(world, avoidance_mode, path_without_current_pos);
             let simplified_path_len = simplified_path.len();
 
-            let mut next_waypoint_drawing = viewer::start_drawing(ViewerObject::Point {
-                color: "grey",
-                pos: *simplified_path
-                    .first()
-                    .expect("couldn't get first point of the path returned by rrt & simplified by Robot::simplify_path()"),
-            });
-
             let mut _ps = vec![self.get_pos()];
             for p in &simplified_path[..simplified_path_len - 1] {
                 _ps.push(*p);
@@ -556,10 +549,6 @@ impl Robot<AllyData> {
                     }
                     let v = self.pov_vec(traj.get_velocity(0.075));
                     self.set_target_vel(v);
-                    next_waypoint_drawing.update(ViewerObject::Point {
-                        color: "grey",
-                        pos: *p,
-                    });
                     path_drawing[0].update(ViewerObject::Segment {
                         color: "red",
                         start: self.get_pos(), // update the current segment of the path to start at robot pos

@@ -129,6 +129,7 @@
                 ctx.strokeRect(70, 70, 900, 600);
 
                 // white center circle
+                ctx.strokeStyle = "white";
                 ctx.beginPath();
                 ctx.ellipse(
                     1040 / 2,
@@ -142,23 +143,29 @@
                 ctx.stroke();
 
                 // white vertical line
+                ctx.strokeStyle = "white";
                 ctx.moveTo(1040 / 2, 70);
                 ctx.lineTo(1040 / 2, 670);
                 ctx.stroke();
                 // white horizontal line
+                ctx.strokeStyle = "white";
                 ctx.moveTo(70, 740 / 2);
                 ctx.lineTo(970, 740 / 2);
                 ctx.stroke();
 
                 // white left defense area
+                ctx.strokeStyle = "white";
                 ctx.strokeRect(70, 740 / 2 - 100, 100, 200);
 
                 // white right defense area
+                ctx.strokeStyle = "white";
                 ctx.strokeRect(970 - 100, 740 / 2 - 100, 100, 200);
 
                 // white left goal
+                ctx.strokeStyle = "white";
                 ctx.strokeRect(70 - 18, 740 / 2 - 50, 18, 100);
                 // white right goal
+                ctx.strokeStyle = "white";
                 ctx.strokeRect(970, 740 / 2 - 50, 18, 100);
             }
 
@@ -225,7 +232,6 @@
 
                 ctx.lineWidth = 1;
                 ctx.fillStyle = color;
-                ctx.strokeStyle = color;
 
                 ctx.beginPath();
                 ctx.arc(pos_x, pos_y, 2.5, 0, 2 * Math.PI);
@@ -244,7 +250,6 @@
                     -segmentRenderCommandData.end.y * 100 + fieldHeight / 2;
 
                 ctx.lineWidth = 1;
-                ctx.fillStyle = color;
                 ctx.strokeStyle = color;
 
                 // white horizontal line
