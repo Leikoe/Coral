@@ -1,4 +1,6 @@
-# ssl_async_strategies
+# Coral
+
+A simple Robocup's Small Size League AI software, made in Rust.
 
 ## Requirements
 - Rust
