@@ -1,4 +1,6 @@
-use crabe_async::{math::Point2, simulation_control::SimulationController, world::TeamColor};
+use crabe_async::{
+    math::Point2, testing::simulation_control::SimulationController, world::TeamColor,
+};
 
 #[tokio::main]
 async fn main() {
