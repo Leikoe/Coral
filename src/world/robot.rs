@@ -1,5 +1,5 @@
 use tokio::{select, time::sleep};
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
@@ -33,6 +33,12 @@ const MAX_ACC: f64 = 4.;
 
 const GOTO_ANGULAR_SPEED: f64 = 1.5;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kick {
+    Straight,
+    Chip,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum AvoidanceMode {
     /// can collide with everything
@@ -65,7 +71,7 @@ pub struct AllyData {
     target_vel: Arc<Mutex<Vec2>>,
     target_angular_vel: Arc<Mutex<f64>>,
     should_dribble: Arc<Mutex<bool>>,
-    should_kick: Arc<Mutex<bool>>,
+    should_kick: Arc<Mutex<Option<Kick>>>,
 }
 
 impl RobotData for AllyData {}
@@ -244,19 +250,20 @@ pub enum GotoError {
 }
 
 impl Robot<AllyData> {
-    pub fn kick(&self) {
+    #[instrument(fields(robot_id = self.get_id()), skip(self), level = "debug")]
+    pub fn kick(&self, kick_type: Kick) {
+        debug!("kicking");
         let mut should_kick = self.internal_data.should_kick.lock().unwrap_ignore_poison();
-        *should_kick = true;
+        should_kick.replace(kick_type);
     }
 
     // return the should_kick state & resets it back to false (similar to Option::take)
-    pub fn take_should_kick(&self) -> bool {
+    pub fn take_should_kick(&self) -> Option<Kick> {
         let mut should_kick = self.internal_data.should_kick.lock().unwrap_ignore_poison();
-        let ret = *should_kick;
-        *should_kick = false;
-        ret
+        should_kick.take()
     }
 
+    #[instrument(fields(robot_id = self.get_id()), skip(self), level = "debug")]
     pub fn enable_dribbler(&self) {
         let mut is_dribbling = self
             .internal_data
@@ -266,6 +273,7 @@ impl Robot<AllyData> {
         *is_dribbling = true;
     }
 
+    #[instrument(fields(robot_id = self.get_id()), skip(self), level = "debug")]
     pub fn disable_dribbler(&self) {
         let mut is_dribbling = self
             .internal_data
@@ -445,6 +453,7 @@ impl Robot<AllyData> {
         simplified_path
     }
 
+    #[instrument(fields(robot_id = self.get_id()), skip(self, world, destination, angle), level = "debug")]
     pub async fn goto<T: Reactive<Point2>>(
         &self,
         world: &World,
@@ -477,7 +486,6 @@ impl Robot<AllyData> {
         {
             world.next_update().await;
             debug!(
-                robot_id = self.get_id(),
                 dest = ?destination.get_reactive(),
                 "trying to go to dest"
             );
@@ -503,7 +511,6 @@ impl Robot<AllyData> {
             )
             .map_err(GotoError::NoPathFoundError)?;
             trace!(
-                robot_id = self.get_id(),
                 "rrt took {}ms to compute path",
                 start_time.elapsed().as_millis()
             );
@@ -569,7 +576,7 @@ impl Robot<AllyData> {
                 path_drawing.pop_front(); // when done with a point, we drop it to stop drawing it
             }
         }
-        debug!(robot_id = self.get_id(), "arrived!");
+        debug!("arrived!");
         Ok(())
     }
 
@@ -581,8 +588,9 @@ impl Robot<AllyData> {
     }
 
     // after this call you should have the ball in your spinning dribbler
+    #[instrument(fields(robot_id = self.get_id()), skip(self, world, ball), level = "debug")]
     pub async fn go_get_ball(&self, world: &World, ball: &Ball) {
-        debug!(robot_id = self.get_id(), "go_get_ball");
+        debug!("go_get_ball");
         self.enable_dribbler();
         let angle = self.to(ball).angle();
         while !self.has_ball() {
@@ -595,13 +603,14 @@ impl Robot<AllyData> {
                         AvoidanceMode::None, // TODO: fix this when avoidance works again
                     ) => {}
                 _ = self.wait_until_has_ball() => {
-                    debug!(robot_id = self.get_id(), "we got ball");
+                    debug!("we got ball");
                 }
             };
         }
         sleep(Duration::from_millis(100)).await;
     }
 
+    #[instrument(fields(robot_id = self.get_id()), skip(self, world, receiver), level = "debug")]
     pub async fn pass_to(&self, world: &World, receiver: &AllyRobot) -> Result<(), String> {
         let to_receiver = self.to(receiver);
         let _ = self
@@ -616,11 +625,11 @@ impl Robot<AllyData> {
         let mut kick_cooldown = tokio::time::interval(CONTROL_PERIOD);
         while self.has_ball() {
             kick_cooldown.tick().await;
-            self.kick();
+            self.kick(Kick::Straight);
         }
         match tokio::time::timeout(Duration::from_secs(1), receiver.wait_until_has_ball()).await {
             Ok(_) => {
-                debug!(robot_id = self.get_id(), "passed to {}!", receiver.get_id());
+                debug!("passed to {}!", receiver.get_id());
                 Ok(())
             }
             Err(_) => Err("passed but didn't receive".to_string()),

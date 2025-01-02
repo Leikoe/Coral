@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::{
     math::{Line, Point2, Reactive, ReactivePoint2Ext, ReactiveVec2Ext, Vec2},
-    world::{AllyRobot, AvoidanceMode, Ball, GotoError, World},
+    world::{AllyRobot, AvoidanceMode, Ball, GotoError, Kick, World},
 };
 use tokio::{join, select, time::sleep};
 
@@ -38,7 +38,7 @@ pub async fn strike_alone(world: &World, robot: &AllyRobot, ball: &Ball) -> Resu
     let mut interval = tokio::time::interval(Duration::from_secs(1));
     while robot.has_ball() {
         interval.tick().await;
-        robot.kick();
+        robot.kick(Kick::Straight);
     }
 
     Ok(())
@@ -72,7 +72,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
                 if i.y < 0.5 && i.y > -0.5 {
                     // if the intersection to the ennemy side edge of the field is within their goal
                     println!("SHOOT!");
-                    robot.kick();
+                    robot.kick(Kick::Straight);
                     break;
                 }
             }
@@ -210,7 +210,7 @@ pub async fn three_attackers_attack(
         )
         .await;
     while chosen_striker.has_ball() {
-        chosen_striker.kick();
+        chosen_striker.kick(crate::world::Kick::Straight);
         sleep(Duration::from_secs(1)).await;
     }
 }

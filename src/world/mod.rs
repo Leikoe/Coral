@@ -2,8 +2,9 @@ mod ball;
 mod robot;
 
 // EXPORTS
-pub use ball::Ball;
-pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, GotoError, RobotId};
+pub use ball::*;
+pub use robot::*;
+
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Notify, time::sleep};
 use tracing::warn;

@@ -11,7 +11,7 @@ use crabe_async::{
 };
 use std::{str::FromStr, time::Duration};
 use tokio::{join, select, time::sleep};
-use tracing::info;
+use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
 
 // #[derive(Debug, Clone, Copy)]
@@ -293,7 +293,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                 for ally_detection in allies {
                     let rid = ally_detection.robot_id() as u8;
                     if ally_team.get_mut(&rid).is_none() {
-                        info!("added ally {} to the team!", rid);
+                        debug!("added ally {} to the team!", rid);
                         let r = AllyRobot::default_with_id(rid, world.team_color);
                         ally_team.insert(rid, r);
                     }
@@ -307,7 +307,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                 for ennemy_detection in ennemies {
                     let rid = ennemy_detection.robot_id() as u8;
                     if ennemy_team.get_mut(&rid).is_none() {
-                        info!("added ennemy {} to the ennemies!", rid);
+                        debug!("added ennemy {} to the ennemies!", rid);
                         let r = EnnemyRobot::default_with_id(rid, world.team_color.opposite());
                         ennemy_team.insert(rid, r);
                     }

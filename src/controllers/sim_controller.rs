@@ -6,7 +6,7 @@ use crate::{
         RobotControlResponse, RobotFeedback, RobotMoveCommand,
     },
     net::{udp_transceiver::UdpTransceiver, ReceiveError, SendError},
-    world::{AllyRobot, RobotId, TeamColor},
+    world::{AllyRobot, Kick, RobotId, TeamColor},
 };
 
 use super::RobotController;
@@ -56,10 +56,10 @@ impl RobotController<HashMap<RobotId, RobotFeedback>, SimRobotControllerError>
             //     Some(Kick::ChipKick { power }) => (*power, 45.0),
             // };
 
-            let (kick_speed, kick_angle) = if robot.take_should_kick() {
-                (Some(5.), Some(0.0))
-            } else {
-                (None, None)
+            let (kick_speed, kick_angle) = match robot.take_should_kick() {
+                Some(Kick::Chip) => (Some(5.), Some(45.0)),
+                Some(Kick::Straight) => (Some(5.), Some(0.0)),
+                None => (None, None),
             };
 
             let target_vel = robot.get_target_vel();
