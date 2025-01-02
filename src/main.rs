@@ -277,8 +277,7 @@ async fn main() {
     viewer::init().await;
 
     tokio::spawn(update_world_with_vision_forever(world.clone(), real));
-    let (control_loop_thread_stopper, control_loop_thread_handle) =
-        launch_control_thread(world.clone(), controller);
+    let control_thread_handle = launch_control_thread(world.clone(), controller);
 
     // await allies detection
     world.allies_detection().await;
@@ -292,10 +291,5 @@ async fn main() {
         }
     }
 
-    control_loop_thread_stopper
-        .send(())
-        .expect("couldn't stop control thread"); // ask for stop
-    control_loop_thread_handle
-        .await
-        .expect("failed to stop control loop thread!"); // wait done stopping
+    control_thread_handle.stop().await;
 }

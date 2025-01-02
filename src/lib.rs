@@ -79,10 +79,26 @@ async fn control_loop<
     }
 }
 
+pub struct ControlThreadHandle {
+    stop_sender: Sender<()>,
+    handle: JoinHandle<()>,
+}
+
+impl ControlThreadHandle {
+    pub async fn stop(self) {
+        self.stop_sender
+            .send(())
+            .expect("couldn't stop control thread"); // ask for stop
+        self.handle
+            .await
+            .expect("failed to stop control loop thread!"); // wait done stopping
+    }
+}
+
 pub fn launch_control_thread<E: Debug>(
     world: World,
     mut controller: impl RobotController<HashMap<RobotId, RobotFeedback>, E> + Send + 'static,
-) -> (Sender<()>, JoinHandle<()>) {
+) -> ControlThreadHandle {
     let (stop_sender, stop_receiver) = oneshot::channel();
     let handle = tokio::spawn(async move {
         select! {
@@ -94,7 +110,10 @@ pub fn launch_control_thread<E: Debug>(
 
         controller.close().await.expect("couldn't close controller");
     });
-    (stop_sender, handle)
+    ControlThreadHandle {
+        stop_sender,
+        handle,
+    }
 }
 
 pub async fn update_world_with_vision_forever(mut world: World, real: bool) {

@@ -1,5 +1,7 @@
 use std::{collections::HashMap, future::Future, net::Ipv4Addr};
 
+use tracing::{debug, trace};
+
 use crate::{
     league_protocols::simulation_packet::{
         robot_move_command, MoveLocalVelocity, MoveWheelVelocity, RobotCommand, RobotControl,
@@ -88,6 +90,7 @@ impl RobotController<HashMap<RobotId, RobotFeedback>, SimRobotControllerError>
 
             packet.robot_commands.push(robot_command);
         }
+        trace!(?packet, "sending packet");
 
         async {
             self.socket
@@ -128,7 +131,7 @@ impl RobotController<HashMap<RobotId, RobotFeedback>, SimRobotControllerError>
                 dribbler_speed: Some(0.),
             });
         }
-        println!("stopping robots..");
+        debug!("stopping robots..");
         self.socket
             .send(packet)
             .await
