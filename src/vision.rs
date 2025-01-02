@@ -39,14 +39,4 @@ impl Vision {
     pub async fn receive(&mut self) -> Result<SslWrapperPacket, crate::net::ReceiveError> {
         self.socket.receive::<SslWrapperPacket>().await
     }
-
-    // pub async fn take_pending_packets(&mut self) -> impl Iterator<Item = SslWrapperPacket> {
-    //     let mut received = Vec::new();
-    //     while let Ok(Ok(packet)) =
-    //         tokio::time::timeout(RECEIVE_TIMEOUT, self.socket.receive::<SslWrapperPacket>()).await
-    //     {
-    //         received.push(packet);
-    //     }
-    //     received.into_iter()
-    // }
 }

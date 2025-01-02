@@ -11,7 +11,7 @@ use crabe_async::{
 };
 use std::time::Duration;
 use tokio::{join, select, time::sleep};
-use tracing::{info, Level};
+use tracing::info;
 
 // #[derive(Debug, Clone, Copy)]
 // enum HaltedState {
