@@ -41,6 +41,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
     sync::Notify,
 };
+use tracing::info;
 
 use crate::{
     math::{Point2, Vec2},
@@ -171,7 +172,7 @@ pub async fn init() {
     // Create the event loop and TCP listener we'll accept connections on.
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
-    println!("Listening on: {}", addr);
+    info!("viewer server listening at: {}", addr);
 
     let new_frame_notify_clone = new_frame_notify.clone();
     tokio::spawn(async move {
@@ -193,13 +194,13 @@ async fn accept_connection(new_frame_notifier: Arc<Notify>, stream: TcpStream) {
     let addr = stream
         .peer_addr()
         .expect("connected streams should have a peer address");
-    println!("Peer address: {}", addr);
+    info!(%addr, "new viewer client connected");
 
     let mut ws_stream = tokio_tungstenite::accept_async(stream)
         .await
         .expect("Error during the websocket handshake occurred");
 
-    println!("New WebSocket connection: {}", addr);
+    info!(%addr, "upgraded to websocket");
 
     while !ws_stream.is_terminated() {
         new_frame_notifier.notified().await;

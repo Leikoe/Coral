@@ -11,6 +11,7 @@ use crabe_async::{
 };
 use std::time::Duration;
 use tokio::{join, select, time::sleep};
+use tracing::{info, Level};
 
 // #[derive(Debug, Clone, Copy)]
 // enum HaltedState {
@@ -327,8 +328,14 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt().init();
+
+    // options which will come from cli
     let color = TeamColor::Blue;
     let real = false;
+
+    info!("Starting up Coral (color: {:?}, real: {})", color, real);
+
     let world = World::default_with_team_color(color);
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;

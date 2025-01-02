@@ -9,6 +9,10 @@ default-run = "crabe_async"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "signal"] }
 futures-util = "0.3.31"
 
+# logging
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+
 # path planning
 rrt = "0.7.0"
 rand = "0.8.5"

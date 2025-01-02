@@ -6,6 +6,7 @@ pub use ball::Ball;
 pub use robot::{AllyRobot, AvoidanceMode, EnnemyRobot, GotoError, RobotId};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Notify, time::sleep};
+use tracing::warn;
 
 use crate::{
     league_protocols::vision_packet::SslGeometryFieldSize,
@@ -78,7 +79,7 @@ impl World {
 
     pub async fn allies_detection(&self) {
         while self.team.lock().unwrap_ignore_poison().is_empty() {
-            println!("[WARNING] not detecting any ally robots yet, waiting 1s.");
+            warn!("not detecting any ally robots yet, waiting 1s.");
             sleep(Duration::from_secs(1)).await;
         }
     }
