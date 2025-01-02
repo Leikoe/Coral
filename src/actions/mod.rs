@@ -52,7 +52,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
             world,
             &Point2::new(3., 1.),
             Some(f64::consts::FRAC_PI_2),
-            AvoidanceMode::None,
+            AvoidanceMode::AvoidRobots,
         )
         .await;
 
@@ -81,7 +81,7 @@ pub async fn backwards_strike(world: &World, robot: &AllyRobot, ball: &Ball) {
 
     let p = Point2::new(3., -1.);
     let (_, _) = join!(
-        robot.goto(world, &p, Some(0.), AvoidanceMode::None),
+        robot.goto(world, &p, Some(0.), AvoidanceMode::AvoidRobots),
         shoot_when_can_score
     );
     println!("done");

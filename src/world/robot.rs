@@ -414,6 +414,7 @@ impl Robot<AllyData> {
     //     }
     // }
 
+    #[instrument(fields(robot_id = self.get_id(), pos = ?self.get_pos()), skip(self, world), level = "debug")]
     fn simplify_path(
         &self,
         world: &World,
@@ -442,7 +443,7 @@ impl Robot<AllyData> {
             }
 
             if !t_is_valid {
-                println!("skipped to {}", i);
+                trace!("skipped to {}", i);
                 simplified_path.push(last_p);
                 last_p = p;
             } else {
