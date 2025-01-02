@@ -2,16 +2,12 @@ use crabe_async::{
     actions::{backwards_strike, do_square_rrt},
     controllers::sim_controller::SimRobotController,
     game_controller::GameController,
-    launch_control_thread,
-    math::Point2,
-    viewer::{self, ViewerObject},
-    vision::Vision,
-    world::{AllyRobot, EnnemyRobot, TeamColor, World},
-    DETECTION_SCALING_FACTOR,
+    launch_control_thread, update_world_with_vision_forever, viewer,
+    world::{TeamColor, World},
 };
 use std::{str::FromStr, time::Duration};
 use tokio::{join, select, time::sleep};
-use tracing::{debug, info};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 // #[derive(Debug, Clone, Copy)]
@@ -254,78 +250,6 @@ async fn play(world: World, _gc: GameController) {
     }
 }
 
-async fn update_world_with_vision_forever(mut world: World, real: bool) {
-    let mut vision = Vision::new(None, None, real);
-    let mut ball_drawing = viewer::start_drawing(ViewerObject::Point {
-        color: "orange",
-        pos: world.ball.get_pos(),
-    });
-    let update_notifier = world.get_update_notifier();
-    loop {
-        while let Ok(packet) = vision.receive().await {
-            let mut ally_team = world.team.lock().unwrap();
-            let mut ennemy_team = world.ennemies.lock().unwrap();
-            let ball = world.ball.clone();
-            if let Some(detection) = packet.detection {
-                // println!("NEW CAM PACKET!");
-                let detection_time = detection.t_capture;
-                if let Some(ball_detection) = detection.balls.first() {
-                    let detected_pos = Point2::new(
-                        ball_detection.x as f64 / DETECTION_SCALING_FACTOR,
-                        ball_detection.y as f64 / DETECTION_SCALING_FACTOR,
-                    );
-                    if let Some(last_t) = ball.get_last_update() {
-                        let dt = detection_time - last_t;
-                        ball.set_vel((detected_pos - ball.get_pos()) / dt);
-                    }
-                    // println!("{:?}", detected_pos);
-                    ball.set_pos(detected_pos);
-                    ball_drawing.update(ViewerObject::Point {
-                        color: "orange",
-                        pos: detected_pos,
-                    });
-                }
-
-                let (allies, ennemies) = match world.team_color {
-                    TeamColor::Blue => (detection.robots_blue, detection.robots_yellow),
-                    TeamColor::Yellow => (detection.robots_yellow, detection.robots_blue),
-                };
-                for ally_detection in allies {
-                    let rid = ally_detection.robot_id() as u8;
-                    if ally_team.get_mut(&rid).is_none() {
-                        debug!("added ally {} to the team!", rid);
-                        let r = AllyRobot::default_with_id(rid, world.team_color);
-                        ally_team.insert(rid, r);
-                    }
-                    // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                    let r = ally_team
-                        .get_mut(&rid)
-                        .expect("pre inserted robot MUST be present");
-                    r.update_from_packet(ally_detection, &ball, detection_time);
-                }
-
-                for ennemy_detection in ennemies {
-                    let rid = ennemy_detection.robot_id() as u8;
-                    if ennemy_team.get_mut(&rid).is_none() {
-                        debug!("added ennemy {} to the ennemies!", rid);
-                        let r = EnnemyRobot::default_with_id(rid, world.team_color.opposite());
-                        ennemy_team.insert(rid, r);
-                    }
-                    // SAFETY: if the robot wasn't present, we inserted it & we hold the lock. Therefore it MUST be in the map
-                    let r = ennemy_team
-                        .get_mut(&rid)
-                        .expect("pre inserted robot MUST be present");
-                    r.update_from_packet(ennemy_detection, &ball, detection_time);
-                }
-                update_notifier.notify_waiters();
-            }
-            if let Some(geometry) = packet.geometry {
-                world.field.update_from_packet(geometry.field);
-            }
-        }
-    }
-}
-
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
@@ -345,26 +269,33 @@ async fn main() {
 
     let world = World::default_with_team_color(color);
     let gc = GameController::new(None, None);
-    let controller = SimRobotController::new(color).await;
+    let controller = if real {
+        unimplemented!("didn't write real robots controller yet");
+    } else {
+        SimRobotController::new(color).await
+    };
     viewer::init().await;
 
     tokio::spawn(update_world_with_vision_forever(world.clone(), real));
-    let (control_loop_thread_stop_notifier, control_loop_thread_handle) =
+    let (control_loop_thread_stopper, control_loop_thread_handle) =
         launch_control_thread(world.clone(), controller);
-    world.allies_detection().await; // AWAIT ROBOTS DETECTION
 
+    // await allies detection
+    world.allies_detection().await;
+
+    // play until ctrl-c
     select! {
         _ = play(world, gc) => {}
         r = tokio::signal::ctrl_c() => {
             r.expect("failed to listen for event");
-            println!("detected ctrl-c, stopping now!");
+            info!("detected ctrl-c, stopping now!");
         }
     }
 
-    sleep(Duration::from_millis(100)).await;
-    control_loop_thread_stop_notifier.notify_one(); // ask for stop
+    control_loop_thread_stopper
+        .send(())
+        .expect("couldn't stop control thread"); // ask for stop
     control_loop_thread_handle
         .await
         .expect("failed to stop control loop thread!"); // wait done stopping
-    sleep(Duration::from_millis(100)).await;
 }
