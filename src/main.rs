@@ -9,9 +9,10 @@ use crabe_async::{
     world::{AllyRobot, EnnemyRobot, TeamColor, World},
     DETECTION_SCALING_FACTOR,
 };
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 use tokio::{join, select, time::sleep};
 use tracing::info;
+use tracing_subscriber::EnvFilter;
 
 // #[derive(Debug, Clone, Copy)]
 // enum HaltedState {
@@ -292,7 +293,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                 for ally_detection in allies {
                     let rid = ally_detection.robot_id() as u8;
                     if ally_team.get_mut(&rid).is_none() {
-                        println!("[DEBUG] added ally {} to the team!", rid);
+                        info!("added ally {} to the team!", rid);
                         let r = AllyRobot::default_with_id(rid, world.team_color);
                         ally_team.insert(rid, r);
                     }
@@ -306,7 +307,7 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
                 for ennemy_detection in ennemies {
                     let rid = ennemy_detection.robot_id() as u8;
                     if ennemy_team.get_mut(&rid).is_none() {
-                        println!("[DEBUG] added ennemy {} to the ennemies!", rid);
+                        info!("added ennemy {} to the ennemies!", rid);
                         let r = EnnemyRobot::default_with_id(rid, world.team_color.opposite());
                         ennemy_team.insert(rid, r);
                     }
@@ -328,7 +329,13 @@ async fn update_world_with_vision_forever(mut world: World, real: bool) {
 /// Simulation of a real control loop
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            // we only log >=warn OR >=info for viewer OR >=debug for this crate
+            EnvFilter::from_str("warn,crabe_async::viewer=info,crabe_async=debug")
+                .expect("couldn't parse log filter"),
+        )
+        .init();
 
     // options which will come from cli
     let color = TeamColor::Blue;
@@ -340,7 +347,6 @@ async fn main() {
     let gc = GameController::new(None, None);
     let controller = SimRobotController::new(color).await;
     viewer::init().await;
-    println!("init done!");
 
     tokio::spawn(update_world_with_vision_forever(world.clone(), real));
     let (control_loop_thread_stop_notifier, control_loop_thread_handle) =

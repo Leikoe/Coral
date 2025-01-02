@@ -1,4 +1,5 @@
 use tokio::{select, time::sleep};
+use tracing::{debug, trace};
 
 use crate::{
     league_protocols::vision_packet::SslDetectionRobot,
@@ -346,7 +347,7 @@ impl Robot<AllyData> {
             let t = i as f64 * TIME_STEP;
             let p = traj.get_position(t);
             if !self.is_free(p, world, avoidance_mode) {
-                println!("[robot{}] collision at {}", self.get_id(), t);
+                trace!("[robot{}] collision at {}", self.get_id(), t);
                 return false;
             }
         }
@@ -475,7 +476,11 @@ impl Robot<AllyData> {
                 .unwrap_or(true))
         {
             world.next_update().await;
-            println!("[robot{}] trying to go to dest", self.get_id());
+            debug!(
+                robot_id = self.get_id(),
+                dest = ?destination.get_reactive(),
+                "trying to go to dest"
+            );
             let field = world.field.get_bounding_box(); // assume that the field won't change size during this path generation
 
             // TODO: fix later
@@ -497,9 +502,9 @@ impl Robot<AllyData> {
                 RRT_MAX_TRIES,
             )
             .map_err(GotoError::NoPathFoundError)?;
-            println!(
-                "[TRACE - robot {} - goto_rrt] took {}ms to compute path",
-                self.get_id(),
+            trace!(
+                robot_id = self.get_id(),
+                "rrt took {}ms to compute path",
                 start_time.elapsed().as_millis()
             );
             let path_without_current_pos: Vec<Point2> = path
@@ -528,7 +533,7 @@ impl Robot<AllyData> {
                 .collect();
 
             for (i, p) in simplified_path.iter().enumerate() {
-                println!("going to point {}", i);
+                trace!("going to point {}", i);
                 let is_last = i == simplified_path_len - 1;
                 let done_dst = if is_last {
                     IS_CLOSE_EPSILON
@@ -544,7 +549,7 @@ impl Robot<AllyData> {
                     world.next_update().await;
                     let traj = self.make_bangbang2d_to(*p);
                     if !self.is_a_valid_trajectory(&traj, world, avoidance_mode) {
-                        println!("traj is now invalid, generating a new path!");
+                        debug!("traj is now invalid, generating a new path!");
                         continue 'newpath;
                     }
                     let v = self.pov_vec(traj.get_velocity(0.075));
@@ -564,7 +569,7 @@ impl Robot<AllyData> {
                 path_drawing.pop_front(); // when done with a point, we drop it to stop drawing it
             }
         }
-        println!("arrived!");
+        debug!(robot_id = self.get_id(), "arrived!");
         Ok(())
     }
 
@@ -577,7 +582,7 @@ impl Robot<AllyData> {
 
     // after this call you should have the ball in your spinning dribbler
     pub async fn go_get_ball(&self, world: &World, ball: &Ball) {
-        println!("go_get_ball()");
+        debug!(robot_id = self.get_id(), "go_get_ball");
         self.enable_dribbler();
         let angle = self.to(ball).angle();
         while !self.has_ball() {
@@ -590,7 +595,7 @@ impl Robot<AllyData> {
                         AvoidanceMode::None, // TODO: fix this when avoidance works again
                     ) => {}
                 _ = self.wait_until_has_ball() => {
-                    println!("we got ball");
+                    debug!(robot_id = self.get_id(), "we got ball");
                 }
             };
         }
@@ -615,7 +620,7 @@ impl Robot<AllyData> {
         }
         match tokio::time::timeout(Duration::from_secs(1), receiver.wait_until_has_ball()).await {
             Ok(_) => {
-                println!("[robot{}] passed!", self.get_id());
+                debug!(robot_id = self.get_id(), "passed to {}!", receiver.get_id());
                 Ok(())
             }
             Err(_) => Err("passed but didn't receive".to_string()),

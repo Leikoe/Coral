@@ -41,7 +41,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
     sync::Notify,
 };
-use tracing::info;
+use tracing::{debug, info, trace};
 
 use crate::{
     math::{Point2, Vec2},
@@ -111,6 +111,7 @@ pub struct ViewerObjectGuard {
 
 impl ViewerObjectGuard {
     pub fn update(&mut self, o: ViewerObject) {
+        trace!(uuid = self.id, drawing = ?o, "updated drawing");
         DRAWINGS_POOL
             .lock()
             .unwrap_ignore_poison()
@@ -120,6 +121,7 @@ impl ViewerObjectGuard {
 
 impl Drop for ViewerObjectGuard {
     fn drop(&mut self) {
+        debug!(uuid = self.id, "stopped drawing");
         let mut lock = DRAWINGS_POOL.lock().unwrap_ignore_poison();
         lock.remove(&self.id);
     }
@@ -159,6 +161,7 @@ impl Drop for ViewerObjectGuard {
 /// ```
 pub fn start_drawing(o: ViewerObject) -> ViewerObjectGuard {
     let uuid: usize = rand::random(); // TODO: replace this by a atomic usize
+    debug!(uuid = uuid, drawing = ?o, "start drawing");
     let mut lock = DRAWINGS_POOL.lock().unwrap_ignore_poison();
     lock.insert(uuid, o);
     ViewerObjectGuard { id: uuid }

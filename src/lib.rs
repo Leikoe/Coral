@@ -22,6 +22,7 @@ use std::{
 use controllers::RobotController;
 use league_protocols::simulation_packet::RobotFeedback;
 use tokio::{select, sync::Notify, task::JoinHandle};
+use tracing::warn;
 use world::{AllyRobot, RobotId, World};
 
 pub const CONTROL_PERIOD: Duration = Duration::from_millis(10);
@@ -38,7 +39,7 @@ impl<T> IgnoreMutexErr<T> for LockResult<T> {
             Err(poisoned) => {
                 // Handle mutex poisoning
                 let guard = poisoned.into_inner();
-                println!("[WARNING] mutex was poisoned, recovering from mutex poisoning");
+                warn!("mutex was poisoned, recovering from mutex poisoning");
                 guard
             }
         }
